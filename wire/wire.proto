@@ -1,0 +1,47 @@
+syntax = "proto3";
+package wire;
+
+message OpeningTx {
+  string channel_id = 1;
+  bytes pubkey1 = 2;
+  bytes pubkey2 = 3;
+  uint32 amount1 = 4;
+  uint32 amount2 = 5;
+  uint32 hold_period = 6;
+}
+
+message UpdateTx {
+  string channel_id = 1;
+  sint64 net_transfer = 2;
+  uint32 sequence_number = 3;
+  bool fast = 4;
+
+  message Condition {
+    string preset_condition = 1;
+    int64 conditional_transfer = 2;
+    string data = 3;
+  }
+
+  map<string, Condition> conditions = 5;
+}
+
+message Fulfillment {
+  string channel_id = 1;
+  string condition = 2;
+  string data = 3;
+}
+
+message Envelope {
+  enum Type {
+    OpeningTx = 0;
+    OpeningTxProposal = 1;
+    UpdateTx = 2;
+    UpdateTxProposal = 3;
+    Fulfillment = 4;
+  }
+
+  Type type = 1;
+  bytes payload = 2;
+  bytes signature1 = 3;
+  bytes signature2 = 4;
+}

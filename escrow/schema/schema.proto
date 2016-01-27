@@ -1,0 +1,51 @@
+syntax = "proto3";
+import "github.com/jtremback/upc-core/wire/wire.proto";
+
+package schema;
+
+message Channel {
+  enum State {
+    PendingOpen = 0;
+    Open = 1;
+    PendingClosed = 2;
+    Closed = 3;
+  }
+  string channelID = 1;
+  State state = 2;
+
+  wire.OpeningTx openingTx = 3;
+  wire.Envelope openingTxEnvelope = 4;
+
+  wire.UpdateTx lastUpdateTx = 5;
+  wire.Envelope lastUpdateTxEnvelope = 6;
+
+  wire.UpdateTx lastFullUpdateTx = 7;
+  wire.Envelope lastFullUpdateTxEnvelope = 8;
+
+  EscrowProvider escrowProvider = 9;
+
+  Account account = 10;
+  Peer peer = 11;
+
+  uint32 me = 12;
+  repeated wire.Fulfillment fulfillments = 13;
+}
+
+message Account {
+  string name = 1;
+  bytes pubkey = 2;
+  bytes privkey = 3;
+  string escrowProvider = 4;
+}
+
+message EscrowProvider {
+  string name = 1;
+  string pubkey = 2;
+  string address = 3;
+}
+
+message Peer {
+  string name = 1;
+  bytes pubkey = 2;
+  string address = 3;
+}
