@@ -2,10 +2,7 @@ package wallet
 
 import (
 	"fmt"
-	// "github.com/agl/ed25519"
 	"github.com/jtremback/upc-core/wallet/schema"
-	// "github.com/jtremback/upc-core/wire"
-	// "reflect"
 	"testing"
 )
 
