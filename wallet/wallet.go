@@ -3,6 +3,7 @@ package wallet
 import (
 	"crypto/rand"
 	"errors"
+	// "fmt"
 	"github.com/agl/ed25519"
 	"github.com/golang/protobuf/proto"
 	"github.com/jtremback/upc-core/wallet/schema"
@@ -10,7 +11,9 @@ import (
 	"io"
 )
 
+// Channel
 type Channel schema.Channel
+type OpeningTx wire.OpeningTx
 
 func sliceTo64Byte(slice []byte) *[64]byte {
 	var array [64]byte
@@ -44,7 +47,7 @@ func calcConditionalTransfer(lst *wire.UpdateTx) int64 {
 }
 
 // NewChannel makes a new Channel with the supplied information. `Pubkey1` of
-// the created Channel will correspond to `account`
+// the created Channel will correspond to `account`.
 func NewChannel(
 	account *schema.Account,
 	peer *schema.Peer,
@@ -68,11 +71,13 @@ func NewChannel(
 			Amount2:    theirAmount,
 			HoldPeriod: holdPeriod,
 		},
-		Me:    1,
-		State: schema.Channel_PendingOpen,
+		Me:      1,
+		Account: account,
+		Peer:    peer,
+		State:   schema.Channel_PendingOpen,
 	}
 
-	// Serialize update transaction
+	// Serialize opening transaction
 	data, err := proto.Marshal(ch.OpeningTx)
 	if err != nil {
 		return nil, err
@@ -80,9 +85,39 @@ func NewChannel(
 
 	// Make new envelope
 	ch.OpeningTxEnvelope = &wire.Envelope{
-		Type:       wire.Envelope_UpdateTxProposal,
+		Type:       wire.Envelope_OpeningTx,
 		Payload:    data,
 		Signature1: ed25519.Sign(sliceTo64Byte(account.Privkey), data)[:],
+	}
+
+	return ch, nil
+}
+
+// VerifyOpeningTxProposal checks if a partially-signed OpeningTx has the correct
+// signature
+func VerifyOpeningTxProposal(ev *wire.Envelope) (*wire.OpeningTx, error) {
+	otx := &wire.OpeningTx{}
+	err := proto.Unmarshal(ev.Payload, otx)
+	if err != nil {
+		return nil, err
+	}
+
+	if !ed25519.Verify(sliceTo32Byte(otx.Pubkey1), ev.Payload, sliceTo64Byte(ev.Signature1)) {
+		return nil, errors.New("signature invalid")
+	}
+
+	return otx, nil
+}
+
+// NewChannelFromOpeningTxProposal
+func NewChannelFromOpeningTxProposal(otx *wire.OpeningTx, acct *schema.Account, peer *schema.Peer) (*Channel, error) {
+	ch := &Channel{
+		ChannelId: otx.ChannelId,
+		OpeningTx: otx,
+		Me:        2,
+		Account:   acct,
+		Peer:      peer,
+		State:     schema.Channel_Open,
 	}
 
 	return ch, nil
@@ -91,8 +126,13 @@ func NewChannel(
 // NewUpdateTxProposal makes a new UpdateTx on Channel with NetTransfer changed by amount.
 func (ch *Channel) NewUpdateTxProposal(amount int64) (*wire.UpdateTx, error) {
 	lst := ch.LastUpdateTx
-	nt := lst.NetTransfer
-
+	var nt int64
+	var seq uint32
+	if lst != nil {
+		nt = lst.NetTransfer
+		nt += calcConditionalTransfer(lst)
+		seq = lst.SequenceNumber + 1
+	}
 	// Check if we are pubkey1 or pubkey2 and add or subtract amount from net transfer
 	switch ch.Me {
 	case 1:
@@ -100,9 +140,6 @@ func (ch *Channel) NewUpdateTxProposal(amount int64) (*wire.UpdateTx, error) {
 	case 2:
 		nt -= amount
 	}
-
-	// Add conditional transfer
-	nt += calcConditionalTransfer(lst)
 
 	// Check if the net transfer amount is still valid
 	if nt > int64(ch.OpeningTx.Amount1) || nt < -int64(ch.OpeningTx.Amount2) {
@@ -113,9 +150,26 @@ func (ch *Channel) NewUpdateTxProposal(amount int64) (*wire.UpdateTx, error) {
 	return &wire.UpdateTx{
 		ChannelId:      ch.ChannelId,
 		NetTransfer:    nt,
-		SequenceNumber: lst.SequenceNumber + 1,
+		SequenceNumber: seq,
 		Fast:           false,
 	}, nil
+}
+
+func (ch *Channel) SignUpdateTxProposal(utx *wire.UpdateTx) (*wire.Envelope, error) {
+	// Serialize update transaction
+	data, err := proto.Marshal(utx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Make new envelope
+	ev := wire.Envelope{
+		Type:       wire.Envelope_UpdateTxProposal,
+		Payload:    data,
+		Signature1: ed25519.Sign(sliceTo64Byte(ch.Account.Privkey), data)[:],
+	}
+
+	return &ev, nil
 }
 
 // VerifyUpdateTxProposal takes an Envelope containing a UpdateTx with one
