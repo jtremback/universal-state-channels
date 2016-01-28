@@ -29,107 +29,47 @@ var peer2 = &schema.Peer{
 	Pubkey: []byte{166, 179, 85, 111, 208, 182, 235, 76, 4, 45, 157, 209, 98, 106, 201, 245, 59, 25, 255, 99, 66, 25, 135, 20, 5, 86, 82, 72, 97, 212, 177, 132},
 }
 
-// var ch = &Channel{
-// 	ChannelId: "snoop",
-// 	OpeningTx: &wire.OpeningTx{
-// 		ChannelId: "snoop",
-// 		Pubkey1:   account.Pubkey,
-// 		Pubkey2:   account2.Pubkey,
-// 		Amount1:   100,
-// 		Amount2:   100,
-// 	},
-// 	LastUpdateTx: &wire.UpdateTx{
-// 		ChannelId:      "poop",
-// 		NetTransfer:    -24,
-// 		SequenceNumber: 1,
-// 	},
-// 	Me: 1,
-// }
-
-// var ch2 = &Channel{
-// 	ChannelId: "snoop",
-// 	OpeningTx: &wire.OpeningTx{
-// 		Pubkey1: account.Pubkey,
-// 		Pubkey2: account2.Pubkey,
-// 		Amount1: 100,
-// 		Amount2: 100,
-// 	},
-// 	LastUpdateTx: &wire.UpdateTx{
-// 		ChannelId:      "snoop",
-// 		NetTransfer:    -24,
-// 		SequenceNumber: 1,
-// 	},
-// 	Me: 2,
-// }
-
-// func TestNewChannel(t *testing.T) {
-// 	NewChannel(account, account2, 100, 100, holdPeriod)
-// }
-
-// func TestNewChannel(t *testing.T) {
-// 	ch, err := NewChannel(account1, peer2, 100, 100, 86400)
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
-// 	fmt.Println(ch)
-// }
-
-// func TestNewUpdateTxProposal(t *testing.T) {
-// 	ideal := &wire.UpdateTx{
-// 		ChannelId:      "snoop",
-// 		NetTransfer:    -12,
-// 		SequenceNumber: 2,
-// 		Fast:           false,
-// 	}
-// 	actual, err := ch.NewUpdateTxProposal(12)
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
-
-// 	if !reflect.DeepEqual(ideal, actual) {
-// 		t.Error("incorrect output", ideal, actual)
-// 	}
-// }
-
-// func TestNewUpdateTxProposal(t *testing.T) {
-// 	ideal := &wire.UpdateTx{
-// 		ChannelId:      "snoop",
-// 		NetTransfer:    -12,
-// 		SequenceNumber: 2,
-// 		Fast:           false,
-// 	}
-// 	actual, err := ch.NewUpdateTxProposal(12)
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
-
-// 	if !reflect.DeepEqual(ideal, actual) {
-// 		t.Error("incorrect output", ideal, actual)
-// 	}
-// }
-
 func TestVerifyUpdateTxProposal(t *testing.T) {
-	ch1, err := NewChannel(account1, peer2, 100, 100, 86400)
+	otx, err := NewOpeningTx(account1, peer2, 100, 100, 86400)
 	if err != nil {
 		t.Error(err)
 	}
 
-	ch2, err := NewChannel(account2, peer1, 100, 100, 86400)
+	ev, err := PackageOpeningTx(otx, account1)
 	if err != nil {
 		t.Error(err)
 	}
 
-	utx, err := ch2.NewUpdateTxProposal(12)
+	// Send ev across wire
+
+	ev, err = VerifyOpeningTxProposal(ev, account2)
 	if err != nil {
 		t.Error(err)
 	}
 
-	ev, err := ch2.SignUpdateTxProposal(utx)
+	ch2, err := NewChannel(ev, account2, peer1)
 	if err != nil {
 		t.Error(err)
 	}
 
-	amt, err := ch1.VerifyUpdateTxProposal(ev)
+	// Send back
+
+	ch1, err := NewChannel(ev, account1, peer2)
+	if err != nil {
+		t.Error(err)
+	}
+
+	utx, err := ch1.NewUpdateTxProposal(12)
+	if err != nil {
+		t.Error(err)
+	}
+
+	ev, err = ch1.SignUpdateTxProposal(utx)
+	if err != nil {
+		t.Error(err)
+	}
+
+	amt, err := ch2.VerifyUpdateTxProposal(ev)
 	if err != nil {
 		t.Error(err)
 	}
