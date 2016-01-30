@@ -246,8 +246,8 @@ func (ch *Channel) VerifyUpdateTxProposal(ev *wire.Envelope) (uint32, error) {
 	return amt, nil
 }
 
-// StartClose changes the Channel to pending closed and signs the LastFullUpdateTx
-func (ch *Channel) StartClose() (*wire.Envelope, error) {
+// CloseStart changes the Channel to pending closed and signs the LastFullUpdateTx
+func (ch *Channel) CloseStart() (*wire.Envelope, error) {
 	if ch.State != schema.Channel_Open {
 		return nil, errors.New("channel must be open")
 	}
@@ -255,8 +255,8 @@ func (ch *Channel) StartClose() (*wire.Envelope, error) {
 	return ch.LastFullUpdateTxEnvelope, nil
 }
 
-// ConfirmClose is called when we receive word from the bank that the channel is permanently closed
-func (ch *Channel) ConfirmClose(utx *wire.UpdateTx) error {
+// CloseConfirm is called when we receive word from the bank that the channel is permanently closed
+func (ch *Channel) CloseConfirm(utx *wire.UpdateTx) error {
 	if ch.State != schema.Channel_PendingClosed {
 		return errors.New("channel must be pending closed")
 	}
