@@ -1,17 +1,17 @@
 syntax = "proto3";
 import "github.com/jtremback/upc-core/wire/wire.proto";
 
-package schema;
+package wallet;
 
 message Channel {
-  enum State {
+  enum Phase {
     PendingOpen = 0;
     Open = 1;
     PendingClosed = 2;
     Closed = 3;
   }
   string channel_id = 1;
-  State state = 2;
+  Phase phase = 2;
 
   // This is how
   wire.OpeningTx opening_tx = 3;
@@ -25,28 +25,38 @@ message Channel {
 
   EscrowProvider escrow_provider = 9;
 
-  Account account = 10;
-  Peer peer = 11;
+  repeated Account accounts = 10;
 
   uint32 me = 12;
-  repeated wire.Fulfillment fulfillments = 13;
+  repeated bytes fulfillments = 13;
 }
 
 message Account {
   string name = 1;
   bytes pubkey = 2;
   bytes privkey = 3;
-  string escrow_provider = 4;
+  string address = 4;
+  string escrow_provider = 5;
 }
 
 message EscrowProvider {
   string name = 1;
   bytes pubkey = 2;
-  string address = 3;
+  bytes privkey = 3;
+  string address = 4;
 }
 
-message Peer {
-  string name = 1;
-  bytes pubkey = 2;
-  string address = 3;
-}
+
+
+// message Account {
+//   string name = 1;
+//   bytes pubkey = 2;
+//   bytes privkey = 3;
+//   string escrow_provider = 4;
+// }
+
+// message Counterparty {
+//   string name = 1;
+//   bytes pubkey = 2;
+//   string address = 3;
+// }

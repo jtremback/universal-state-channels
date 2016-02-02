@@ -110,21 +110,21 @@ func (ch *Channel) AddFulfillment(ev *wire.Envelope, eval func()) error {
 	return nil
 }
 
-func parseConditionalMultiplier(s string) (*big.Rat, error) {
-	rat := big.NewRat(0, 1)
-	rat.SetString(s)
-	if rat.Cmp(big.NewRat(1, 1)) > 0 {
-		return rat, errors.New("conditional multiplier is larger than 1")
-	}
-	return rat, nil
-}
+// func parseConditionalMultiplier(s string) (*big.Rat, error) {
+// 	rat := big.NewRat(0, 1)
+// 	rat.SetString(s)
+// 	if rat.Cmp(big.NewRat(1, 1)) > 0 {
+// 		return rat, errors.New("conditional multiplier is larger than 1")
+// 	}
+// 	return rat, nil
+// }
 
-func round(input float64) float64 {
-	if input < 0 {
-		return math.Ceil(input - 0.5)
-	}
-	return math.Floor(input + 0.5)
-}
+// func round(input float64) float64 {
+// 	if input < 0 {
+// 		return math.Ceil(input - 0.5)
+// 	}
+// 	return math.Floor(input + 0.5)
+// }
 
 // EvaluateConditions takes a function `fn` that takes 3 string arguments-
 // Name, ConditionalData, and FulfillmentData. Name is the name of the Condition,
@@ -138,41 +138,41 @@ func round(input float64) float64 {
 // multiplier by the Condition's conditional transfer and adds the result to the
 // Condition's NetTransfer. If there are 2 Fulfillments for one condition, the
 // Fulfillment evaluating to the higher ConditionalMultiplier is used.
-func (ch *Channel) EvaluateConditions(fn func(string, string, string) string) (int64, error) {
-	var fulMap map[string]*big.Rat
+// func (ch *Channel) EvaluateConditions(fn func(string, string, string) string) (int64, error) {
+// 	var fulMap map[string]*big.Rat
 
-	for _, ful := range ch.Fulfillments {
-		// Get corresponding condition
-		cond := ch.LastFullUpdateTx.Conditions[ful.Condition]
-		// Evaluate to get conditional multiplier
-		cm, err := parseConditionalMultiplier(fn(cond.PresetCondition, cond.Data, ful.Data))
-		if err != nil {
-			return 0, err
-		}
+// 	for _, ful := range ch.Fulfillments {
+// 		// Get corresponding condition
+// 		cond := ch.LastFullUpdateTx.Conditions[ful.Condition]
+// 		// Evaluate to get conditional multiplier
+// 		cm, err := parseConditionalMultiplier(fn(cond.PresetCondition, cond.Data, ful.Data))
+// 		if err != nil {
+// 			return 0, err
+// 		}
 
-		// Get previous conditional multiplier, if any
-		prevCm, ok := fulMap[ful.Condition]
-		if ok {
-			// If prevCm is lower, replace
-			if prevCm.Cmp(cm) < 0 {
-				fulMap[ful.Condition] = cm
-			}
-		} else {
-			// If prevCm did not exist, set to cm
-			fulMap[ful.Condition] = cm
-		}
-	}
+// 		// Get previous conditional multiplier, if any
+// 		prevCm, ok := fulMap[ful.Condition]
+// 		if ok {
+// 			// If prevCm is lower, replace
+// 			if prevCm.Cmp(cm) < 0 {
+// 				fulMap[ful.Condition] = cm
+// 			}
+// 		} else {
+// 			// If prevCm did not exist, set to cm
+// 			fulMap[ful.Condition] = cm
+// 		}
+// 	}
 
-	nt := big.NewRat(ch.LastFullUpdateTx.NetTransfer, 1)
+// 	nt := big.NewRat(ch.LastFullUpdateTx.NetTransfer, 1)
 
-	var r big.Rat
-	for _, ful := range ch.Fulfillments {
-		cond := ch.LastFullUpdateTx.Conditions[ful.Condition]
-		cm, _ := fulMap[ful.Condition]
-		nt.Add(nt, r.Mul(big.NewRat(cond.ConditionalTransfer, 1), cm))
-	}
+// 	var r big.Rat
+// 	for _, ful := range ch.Fulfillments {
+// 		cond := ch.LastFullUpdateTx.Conditions[ful.Condition]
+// 		cm, _ := fulMap[ful.Condition]
+// 		nt.Add(nt, r.Mul(big.NewRat(cond.ConditionalTransfer, 1), cm))
+// 	}
 
-	n, _ := nt.Float64()
+// 	n, _ := nt.Float64()
 
-	return int64(round(n)), nil
-}
+// 	return int64(round(n)), nil
+// }
