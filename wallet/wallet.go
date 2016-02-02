@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"crypto/rand"
 	"errors"
-	"fmt"
+	"io"
+
 	"github.com/agl/ed25519"
 	"github.com/golang/protobuf/proto"
 	"github.com/jtremback/upc-core/wire"
-	"io"
 )
 
 // Phases of a Tx
@@ -124,10 +124,10 @@ func (ep *EscrowProvider) VerifyOpeningTx(ev *wire.Envelope) (*wire.Envelope, *w
 // NewChannel creates a new Channel from an Envelope containing an opening transaction,
 // an Account and a Peer.
 func (acct *Account) NewChannel(ev *wire.Envelope, accounts []*Account) (*Channel, error) {
-	fmt.Println("hanj", acct.EscrowProvider)
-	if !ed25519.Verify(sliceTo32Byte(acct.EscrowProvider.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
+	if !ed25519.Verify(sliceTo32Byte(acct.EscrowProvider.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[len(ev.Signatures)-1])) {
 		return nil, errors.New("signature 0 invalid")
 	}
+
 	otx := &wire.OpeningTx{}
 	err := proto.Unmarshal(ev.Payload, otx)
 	if err != nil {
@@ -168,6 +168,7 @@ func (ep *EscrowProvider) NewChannel(ev *wire.Envelope, accounts []*Account) (*C
 		OpeningTx:         otx,
 		OpeningTxEnvelope: ev,
 		Accounts:          accounts,
+		EscrowProvider:    ep,
 		Phase:             Channel_Open,
 	}
 
@@ -198,12 +199,11 @@ func (ch *Channel) SignUpdateTx(utx *wire.UpdateTx) (*wire.Envelope, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	// Make new envelope
 	ev := wire.Envelope{
 		Type:       wire.Envelope_UpdateTx,
 		Payload:    data,
-		Signatures: [][]byte{ed25519.Sign(sliceTo64Byte(ch.Accounts[0].Privkey), data)[:]},
+		Signatures: [][]byte{ed25519.Sign(sliceTo64Byte(ch.Accounts[ch.Me].Privkey), data)[:]},
 	}
 
 	return &ev, nil
@@ -252,7 +252,7 @@ func (ch *Channel) ConfirmUpdateTx(ev *wire.Envelope) (*wire.Envelope, *wire.Upd
 	}
 
 	// Sign envelope
-	ev.Signatures = append(ev.Signatures, [][]byte{ed25519.Sign(sliceTo64Byte(ch.EscrowProvider.Privkey), ev.Payload)[:]}...)
+	ev.Signatures = append(ev.Signatures, [][]byte{ed25519.Sign(sliceTo64Byte(ch.Accounts[ch.Me].Privkey), ev.Payload)[:]}...)
 
 	return ev, utx, nil
 }

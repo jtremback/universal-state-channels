@@ -1,9 +1,6 @@
 package wallet
 
-import (
-	// "fmt"
-	"testing"
-)
+import "testing"
 
 var escrow = &EscrowProvider{
 	Name:    "holding",
@@ -45,68 +42,66 @@ var account2p = &Account{
 func Test(t *testing.T) {
 	otx, err := account1.NewOpeningTx([]*Account{account2}, []byte{166, 179}, 86400)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	ev, err := account1.SignOpeningTx(otx)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	// --- Send to second party ---
 
 	ev, otx, err = account2.ConfirmOpeningTx(ev)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	// --- Send to escrow provider ---
 
 	ev, otx, err = escrow.VerifyOpeningTx(ev)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	ech, err := escrow.NewChannel(ev, []*Account{account1p, account2p})
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	// --- Back to accounts ---
 
-	ch1, err := account1.NewChannel(ev, []*Account{account2p})
+	ch1, err := account1.NewChannel(ev, []*Account{account1, account2p})
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
-
-	ch2, err := account2.NewChannel(ev, []*Account{account1p})
+	ch2, err := account2.NewChannel(ev, []*Account{account1p, account2})
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
-
 	// Make update tx
 
 	utx, err := ch1.NewUpdateTx([]byte{164, 179}, false)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	ev, err = ch1.SignUpdateTx(utx)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	// --- Send to second party ---
 
 	ev, utx, err = ch2.ConfirmUpdateTx(ev)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	// --- Send to escrow provider ---
 
 	ev, utx, err = ech.VerifyUpdateTx(ev)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 }
