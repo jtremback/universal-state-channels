@@ -36,7 +36,7 @@ message Account {
   bytes pubkey = 2;
   bytes privkey = 3;
   string address = 4;
-  string escrow_provider = 5;
+  EscrowProvider escrow_provider = 5;
 }
 
 message EscrowProvider {

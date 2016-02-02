@@ -23,10 +23,8 @@ message Fulfillment {
 message Envelope {
   enum Type {
     OpeningTx = 0;
-    OpeningTxProposal = 1;
-    UpdateTx = 2;
-    UpdateTxProposal = 3;
-    Fulfillment = 4;
+    UpdateTx = 1;
+    Fulfillment = 2;
   }
 
   Type type = 1;
