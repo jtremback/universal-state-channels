@@ -3,7 +3,6 @@ package wallet
 import (
 	"bytes"
 	"errors"
-	"github.com/jtremback/upc-core/wallet/schema"
 	"testing"
 )
 
@@ -19,7 +18,11 @@ var account2 = &Account{
 	Privkey: []byte{184, 174, 56, 197, 104, 10, 100, 13, 194, 229, 111, 227, 49, 49, 126, 232, 117, 100, 207, 170, 154, 36, 118, 153, 143, 150, 182, 228, 98, 161, 144, 112, 166, 179, 85, 111, 208, 182, 235, 76, 4, 45, 157, 209, 98, 106, 201, 245, 59, 25, 255, 99, 66, 25, 135, 20, 5, 86, 82, 72, 97, 212, 177, 132},
 }
 
-var escrowProvider = &schema.EscrowProvider{}
+var escrow = &EscrowProvider{
+	Name:    "holding",
+	Pubkey:  []byte{166, 179, 85, 111, 208, 182, 235, 76, 4, 45, 157, 209, 98, 106, 201, 245, 59, 25, 255, 99, 66, 25, 135, 20, 5, 86, 82, 72, 97, 212, 177, 132},
+	Privkey: []byte{184, 174, 56, 197, 104, 10, 100, 13, 194, 229, 111, 227, 49, 49, 126, 232, 117, 100, 207, 170, 154, 36, 118, 153, 143, 150, 182, 228, 98, 161, 144, 112, 166, 179, 85, 111, 208, 182, 235, 76, 4, 45, 157, 209, 98, 106, 201, 245, 59, 25, 255, 99, 66, 25, 135, 20, 5, 86, 82, 72, 97, 212, 177, 132},
+}
 
 func TestConfirmUpdateTxProposal(t *testing.T) {
 	otx, err := account1.NewOpeningTxProposal([]*Account{account2}, []byte{166, 179}, 86400)
@@ -34,7 +37,7 @@ func TestConfirmUpdateTxProposal(t *testing.T) {
 
 	// --- Send to second party ---
 
-	ev, err = ConfirmOpeningTx(ev, account2, func(ost []byte) error {
+	ev, err = account2.ConfirmOpeningTx(ev, func(pubkeys [][]byte, ost []byte) error {
 		if bytes.Compare(ost, []byte{166, 179}) != 0 {
 			return errors.New("opening tx state is incorrect")
 		}
@@ -44,21 +47,23 @@ func TestConfirmUpdateTxProposal(t *testing.T) {
 		t.Error(err)
 	}
 
-	ch2, err := NewChannel(ev, account2, peer1)
+	ch2, err := account2.NewChannel(ev, []*Account{account1})
 	if err != nil {
 		t.Error(err)
 	}
 
 	// --- Send back to first party ---
 
-	ch1, err := NewChannel(ev, account1, peer2)
+	ch1, err := account1.NewChannel(ev, []*Account{account2})
 	if err != nil {
 		t.Error(err)
 	}
 
 	// --- Send to escrow provider ---
 
-	otx, err = VerifyOpeningTx(ev, func(ost []byte) error {
+	epch, err = escrow.
+
+	otx, err = VerifyOpeningTx(ev, func(pubkeys [][]byte, ost []byte) error {
 		if bytes.Compare(ost, []byte{166, 179}) != 0 {
 			return errors.New("opening tx state is incorrect")
 		}
@@ -78,7 +83,7 @@ func TestConfirmUpdateTxProposal(t *testing.T) {
 		t.Error(err)
 	}
 
-	err = ch2.ConfirmUpdateTx(ev, func(ost []byte, ust []byte) error {
+	err = ch2.ConfirmUpdateTx(ev, func(pubkeys [][]byte, ost []byte, ust []byte) error {
 		if bytes.Compare(ost, []byte{166, 179}) != 0 {
 			return errors.New("opening tx state is incorrect")
 		}
@@ -93,5 +98,5 @@ func TestConfirmUpdateTxProposal(t *testing.T) {
 
 	// --- Send to escrow provider ---
 
-	err = ep
+	err = escrow.
 }
