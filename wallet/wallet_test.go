@@ -1,6 +1,9 @@
 package wallet
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 var escrow = &EscrowProvider{
 	Name:    "holding",
@@ -104,4 +107,10 @@ func Test(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	err = ech.StartHoldPeriod(utx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println("shibby")
+
 }

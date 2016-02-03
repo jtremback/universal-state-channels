@@ -28,9 +28,6 @@ func sliceTo32Byte(slice []byte) *[32]byte {
 	return &array
 }
 
-// func signedBy(payload []byte, ) {
-// }
-
 func randomBytes(c uint) ([]byte, error) {
 	b := make([]byte, c)
 	n, err := io.ReadFull(rand.Reader, b)
@@ -38,6 +35,82 @@ func randomBytes(c uint) ([]byte, error) {
 		return nil, err
 	}
 	return b, nil
+}
+
+type Phase int
+
+const (
+	PENDING_OPEN   Phase = 1
+	OPEN           Phase = 2
+	PENDING_CLOSED Phase = 3
+	CLOSED         Phase = 4
+)
+
+type Channel struct {
+	ChannelId string
+	Phase
+
+	OpeningTx         *wire.OpeningTx
+	OpeningTxEnvelope *wire.Envelope
+
+	LastUpdateTx         *wire.UpdateTx
+	LastUpdateTxEnvelope *wire.Envelope
+
+	LastFullUpdateTx         *wire.UpdateTx
+	LastFullUpdateTxEnvelope *wire.Envelope
+
+	*EscrowProvider
+	Accounts []*Account
+
+	Me           uint32
+	Fulfillments [][]byte
+}
+
+type Account struct {
+	Name    string
+	Pubkey  []byte
+	Privkey []byte
+	Address string
+	*EscrowProvider
+}
+
+type EscrowProvider struct {
+	Name    string
+	Pubkey  []byte
+	Privkey []byte
+	Address []byte
+}
+
+// NewEscrowProvider makes a new escrow provider
+func NewEscrowProvider(name string, address string, ep *EscrowProvider) (*Account, error) {
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Account{
+		Name:           name,
+		Address:        address,
+		EscrowProvider: ep,
+		Pubkey:         pub[:],
+		Privkey:        priv[:],
+	}, nil
+}
+
+// NewAccount makes a new account
+func NewAccount(name string, address string, ep *EscrowProvider) (*Account, error) {
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Account{
+		Name:           name,
+		Address:        address,
+		EscrowProvider: ep,
+		Pubkey:         pub[:],
+		Privkey:        priv[:],
+	}, nil
 }
 
 // NewOpeningTx assembles an OpeningTx
@@ -148,7 +221,7 @@ func (acct *Account) NewChannel(ev *wire.Envelope, accounts []*Account) (*Channe
 		OpeningTxEnvelope: ev,
 		Me:                me,
 		Accounts:          accounts,
-		Phase:             Channel_Open,
+		Phase:             OPEN,
 	}
 
 	return ch, nil
@@ -169,7 +242,7 @@ func (ep *EscrowProvider) NewChannel(ev *wire.Envelope, accounts []*Account) (*C
 		OpeningTxEnvelope: ev,
 		Accounts:          accounts,
 		EscrowProvider:    ep,
-		Phase:             Channel_Open,
+		Phase:             OPEN,
 	}
 
 	return ch, nil
@@ -214,7 +287,7 @@ func (ch *Channel) SignUpdateTx(utx *wire.UpdateTx) (*wire.Envelope, error) {
 // calls fn to verify the state. If all factors are correct, it signs the UpdateTx
 // and puts it in an envelope.
 func (ch *Channel) ConfirmUpdateTx(ev *wire.Envelope) (*wire.Envelope, *wire.UpdateTx, error) {
-	if ch.Phase != Channel_Open {
+	if ch.Phase != OPEN {
 		return nil, nil, errors.New("channel must be open")
 	}
 
@@ -286,13 +359,12 @@ func (ch *Channel) VerifyUpdateTx(ev *wire.Envelope) (*wire.Envelope, *wire.Upda
 }
 
 func (ch *Channel) StartHoldPeriod(utx *wire.UpdateTx) error {
-	if ch.Phase != Channel_PendingClosed {
+	if ch.Phase == PENDING_CLOSED {
 		if ch.LastFullUpdateTx.SequenceNumber > utx.SequenceNumber {
 			return errors.New("update tx with higher sequence number exists")
 		}
 	}
-
-	ch.Phase = Channel_PendingClosed
+	ch.Phase = PENDING_CLOSED
 	ch.LastFullUpdateTx = utx
 	return nil
 }
@@ -300,7 +372,7 @@ func (ch *Channel) StartHoldPeriod(utx *wire.UpdateTx) error {
 // AddFulfillment verifies a fulfillment's signature and adds it to the Channel's
 // Fulfillments array.
 func (ch *Channel) AddFulfillment(ev *wire.Envelope) error {
-	if ch.Phase != Channel_PendingClosed {
+	if ch.Phase != PENDING_CLOSED {
 		return errors.New("channel must be pending closed")
 	}
 
@@ -324,33 +396,33 @@ func (ch *Channel) AddFulfillment(ev *wire.Envelope) error {
 
 // // StartClose changes the Channel to pending closed and signs the LastFullUpdateTx
 // func (ch *Channel) StartClose() (*wire.Envelope, error) {
-// 	if ch.Phase != Channel_Open {
+// 	if ch.Phase != OPEN {
 // 		return nil, errors.New("channel must be open")
 // 	}
-// 	ch.Phase = Channel_PendingClosed
+// 	ch.Phase = PENDING_CLOSED
 // 	return ch.LastFullUpdateTxEnvelope, nil
 // }
 
-// // ConfirmClose is called when we receive word from the bank that the channel is permanently closed
-// func (ch *Channel) ConfirmClose(utx *wire.UpdateTx) error {
-// 	if ch.Phase != Channel_PendingClosed {
-// 		return errors.New("channel must be pending closed")
-// 	}
-// 	ch.LastUpdateTx = utx
-// 	ch.LastFullUpdateTx = utx
-// 	// Change channel state to closed
-// 	ch.Phase = Channel_Closed
-// 	return nil
-// }
+// // // ConfirmClose is called when we receive word from the bank that the channel is permanently closed
+// // func (ch *Channel) ConfirmClose(utx *wire.UpdateTx) error {
+// // 	if ch.Phase != PENDING_CLOSED {
+// // 		return errors.New("channel must be pending closed")
+// // 	}
+// // 	ch.LastUpdateTx = utx
+// // 	ch.LastFullUpdateTx = utx
+// // 	// Change channel state to closed
+// // 	ch.Phase = Channel_Closed
+// // 	return nil
+// // }
 
-// func (ch *Channel) StartClose(utx *wire.UpdateTx) error {
-// 	if ch.State != Channel_PendingClosed {
-// 		if ch.LastFullUpdateTx.SequenceNumber > utx.SequenceNumber {
-// 			return errors.New("update tx with higher sequence number exists")
-// 		}
-// 	}
+// // func (ch *Channel) StartClose(utx *wire.UpdateTx) error {
+// // 	if ch.State != PENDING_CLOSED {
+// // 		if ch.LastFullUpdateTx.SequenceNumber > utx.SequenceNumber {
+// // 			return errors.New("update tx with higher sequence number exists")
+// // 		}
+// // 	}
 
-// 	ch.State = Channel_PendingClosed
-// 	ch.LastFullUpdateTx = utx
-// 	return nil
-// }
+// // 	ch.State = PENDING_CLOSED
+// // 	ch.LastFullUpdateTx = utx
+// // 	return nil
+// // }
