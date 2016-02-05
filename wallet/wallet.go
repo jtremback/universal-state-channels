@@ -59,15 +59,15 @@ type Channel struct {
 	LastFullUpdateTx         *wire.UpdateTx
 	LastFullUpdateTxEnvelope *wire.Envelope
 
-	*EscrowProvider
-	Accounts []*Account
+	*EscrowProvider `json:"-"`
+	Accounts        []*Account `json:"-"`
 
 	Me           uint32
 	Fulfillments [][]byte
 }
 
 type Account struct {
-	Name    string
+	Name    string `gorm:"primary_key"`
 	Pubkey  []byte
 	Privkey []byte
 	Address string
@@ -75,25 +75,24 @@ type Account struct {
 }
 
 type EscrowProvider struct {
-	Name    string
+	Name    string `gorm:"primary_key"`
 	Pubkey  []byte
 	Privkey []byte
-	Address []byte
+	Address string
 }
 
 // NewEscrowProvider makes a new escrow provider
-func NewEscrowProvider(name string, address string, ep *EscrowProvider) (*Account, error) {
+func NewEscrowProvider(name string, address string) (*EscrowProvider, error) {
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Account{
-		Name:           name,
-		Address:        address,
-		EscrowProvider: ep,
-		Pubkey:         pub[:],
-		Privkey:        priv[:],
+	return &EscrowProvider{
+		Name:    name,
+		Address: address,
+		Pubkey:  pub[:],
+		Privkey: priv[:],
 	}, nil
 }
 
