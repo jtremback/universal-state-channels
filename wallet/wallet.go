@@ -60,16 +60,24 @@ type Channel struct {
 	LastFullUpdateTxEnvelope *wire.Envelope
 
 	*EscrowProvider `json:"-"`
-	Accounts        []*Account `json:"-"`
+	// Accounts        []*Account `json:"-"`
+	MyAccount    *MyAccount
+	TheirAccount *TheirAccount
 
 	Me           uint32
 	Fulfillments [][]byte
 }
 
-type Account struct {
+type MyAccount struct {
 	Name    string `gorm:"primary_key"`
 	Pubkey  []byte
 	Privkey []byte
+	*EscrowProvider
+}
+
+type TheirAccount struct {
+	Name    string `gorm:"primary_key"`
+	Pubkey  []byte
 	Address string
 	*EscrowProvider
 }
@@ -81,52 +89,63 @@ type EscrowProvider struct {
 	Address string
 }
 
-// NewEscrowProvider makes a new escrow provider
-func NewEscrowProvider(name string, address string) (*EscrowProvider, error) {
+// // NewEscrowProvider makes a new escrow provider
+// func NewEscrowProvider(name string, address string) (*EscrowProvider, error) {
+// 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	return &EscrowProvider{
+// 		Name:    name,
+// 		Address: address,
+// 		Pubkey:  pub[:],
+// 	}, nil
+// }
+
+// // AddEscrowProvider adds an escrow provider
+// func AddEscrowProvider(name string, address string, pubkey []byte) (*EscrowProvider, error) {
+// 	return &TheirAccount{
+// 		Name:    name,
+// 		Address: address,
+// 		Pubkey:  pubkey,
+// 	}, nil
+// }
+
+// NewAccount makes a new my account
+func NewAccount(name string, address string, ep *EscrowProvider) (*MyAccount, error) {
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		return nil, err
 	}
 
-	return &EscrowProvider{
-		Name:    name,
-		Address: address,
-		Pubkey:  pub[:],
-		Privkey: priv[:],
-	}, nil
-}
-
-// NewAccount makes a new account
-func NewAccount(name string, address string, ep *EscrowProvider) (*Account, error) {
-	pub, priv, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Account{
+	return &MyAccount{
 		Name:           name,
-		Address:        address,
 		EscrowProvider: ep,
 		Pubkey:         pub[:],
 		Privkey:        priv[:],
 	}, nil
 }
 
+// // AddAccount makes a new their account
+// func AddAccount(name string, address string, pubkey []byte, ep *EscrowProvider) (*TheirAccount, error) {
+// 	return &TheirAccount{
+// 		Name:           name,
+// 		Address:        address,
+// 		EscrowProvider: ep,
+// 		Pubkey:         pubkey,
+// 	}, nil
+// }
+
 // NewOpeningTx assembles an OpeningTx
-func (acct *Account) NewOpeningTx(
-	counterparties []*Account,
-	state []byte,
-	holdPeriod uint32,
-) (*wire.OpeningTx, error) {
+func (acct *MyAccount) NewOpeningTx(tAcct *TheirAccount, state []byte, holdPeriod uint32) (*wire.OpeningTx, error) {
 	b, err := randomBytes(32)
 	chID := string(b)
 	if err != nil {
 		return nil, err
 	}
-	var pubkeys [][]byte
-	for _, a := range append([]*Account{acct}, counterparties...) {
-		pubkeys = append(pubkeys, a.Pubkey)
-	}
+
+	pubkeys := [][]byte{acct.Pubkey, tAcct.Pubkey}
 
 	return &wire.OpeningTx{
 		ChannelId:  chID,
@@ -137,7 +156,7 @@ func (acct *Account) NewOpeningTx(
 }
 
 // SignOpeningTx signs and serializes an opening transaction
-func (acct *Account) SignOpeningTx(otx *wire.OpeningTx) (*wire.Envelope, error) {
+func (acct *MyAccount) SignOpeningTx(otx *wire.OpeningTx) (*wire.Envelope, error) {
 	// Serialize opening transaction
 	data, err := proto.Marshal(otx)
 	if err != nil {
@@ -146,15 +165,17 @@ func (acct *Account) SignOpeningTx(otx *wire.OpeningTx) (*wire.Envelope, error) 
 
 	// Make new envelope
 	return &wire.Envelope{
-		Type:       wire.Envelope_OpeningTx,
-		Payload:    data,
-		Signatures: [][]byte{ed25519.Sign(sliceTo64Byte(acct.Privkey), data)[:]},
+		Type:    wire.Envelope_OpeningTx,
+		Payload: data,
+		Signatures: [][]byte{
+			ed25519.Sign(sliceTo64Byte(acct.Privkey), data)[:],
+		},
 	}, nil
 }
 
 // ConfirmOpeningTx checks if a partially-signed OpeningTx has the correct
-// signature from Pubkeys[0], and calls fn to check that the state is correct. If both are ok, it signs the OpeningTx.
-func (acct *Account) ConfirmOpeningTx(ev *wire.Envelope) (*wire.Envelope, *wire.OpeningTx, error) {
+// signature from Pubkeys[0], if ok, it signs the OpeningTx.
+func (acct *MyAccount) ConfirmOpeningTx(ev *wire.Envelope) (*wire.Envelope, *wire.OpeningTx, error) {
 	otx := &wire.OpeningTx{}
 	err := proto.Unmarshal(ev.Payload, otx)
 	if err != nil {
@@ -170,32 +191,9 @@ func (acct *Account) ConfirmOpeningTx(ev *wire.Envelope) (*wire.Envelope, *wire.
 	return ev, otx, nil
 }
 
-// VerifyOpeningTx checks the signatures and state of a fully-signed OpeningTx,
-// unmarshals it and returns it.
-func (ep *EscrowProvider) VerifyOpeningTx(ev *wire.Envelope) (*wire.Envelope, *wire.OpeningTx, error) {
-	otx := wire.OpeningTx{}
-	err := proto.Unmarshal(ev.Payload, &otx)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// Check signatures
-	if !ed25519.Verify(sliceTo32Byte(otx.Pubkeys[0]), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
-		return nil, nil, errors.New("signature 0 invalid")
-	}
-	if !ed25519.Verify(sliceTo32Byte(otx.Pubkeys[1]), ev.Payload, sliceTo64Byte(ev.Signatures[1])) {
-		return nil, nil, errors.New("signature 1 invalid")
-	}
-
-	// Sign envelope
-	ev.Signatures = append(ev.Signatures, [][]byte{ed25519.Sign(sliceTo64Byte(ep.Privkey), ev.Payload)[:]}...)
-
-	return ev, &otx, nil
-}
-
 // NewChannel creates a new Channel from an Envelope containing an opening transaction,
 // an Account and a Peer.
-func (acct *Account) NewChannel(ev *wire.Envelope, accounts []*Account) (*Channel, error) {
+func (acct *MyAccount) NewChannel(ev *wire.Envelope, mAcct *MyAccount, tAcct *TheirAccount) (*Channel, error) {
 	if !ed25519.Verify(sliceTo32Byte(acct.EscrowProvider.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[len(ev.Signatures)-1])) {
 		return nil, errors.New("signature 0 invalid")
 	}
@@ -219,28 +217,8 @@ func (acct *Account) NewChannel(ev *wire.Envelope, accounts []*Account) (*Channe
 		OpeningTx:         otx,
 		OpeningTxEnvelope: ev,
 		Me:                me,
-		Accounts:          accounts,
-		Phase:             OPEN,
-	}
-
-	return ch, nil
-}
-
-// NewChannel creates a new Channel from an Envelope containing an opening transaction,
-// an Account and a Peer.
-func (ep *EscrowProvider) NewChannel(ev *wire.Envelope, accounts []*Account) (*Channel, error) {
-	otx := &wire.OpeningTx{}
-	err := proto.Unmarshal(ev.Payload, otx)
-	if err != nil {
-		return nil, err
-	}
-
-	ch := &Channel{
-		ChannelId:         otx.ChannelId,
-		OpeningTx:         otx,
-		OpeningTxEnvelope: ev,
-		Accounts:          accounts,
-		EscrowProvider:    ep,
+		MyAccount:         mAcct,
+		TheirAccount:      tAcct,
 		Phase:             OPEN,
 	}
 
@@ -275,7 +253,7 @@ func (ch *Channel) SignUpdateTx(utx *wire.UpdateTx) (*wire.Envelope, error) {
 	ev := wire.Envelope{
 		Type:       wire.Envelope_UpdateTx,
 		Payload:    data,
-		Signatures: [][]byte{ed25519.Sign(sliceTo64Byte(ch.Accounts[ch.Me].Privkey), data)[:]},
+		Signatures: [][]byte{ed25519.Sign(sliceTo64Byte(ch.MyAccount.Privkey), data)[:]},
 	}
 
 	return &ev, nil
@@ -324,35 +302,7 @@ func (ch *Channel) ConfirmUpdateTx(ev *wire.Envelope) (*wire.Envelope, *wire.Upd
 	}
 
 	// Sign envelope
-	ev.Signatures = append(ev.Signatures, [][]byte{ed25519.Sign(sliceTo64Byte(ch.Accounts[ch.Me].Privkey), ev.Payload)[:]}...)
-
-	return ev, utx, nil
-}
-
-// VerifyUpdateTx checks the signatures and the state of a fully-signed UpdateTx,
-// unmarshals it, signs it, and returns it.
-func (ch *Channel) VerifyUpdateTx(ev *wire.Envelope) (*wire.Envelope, *wire.UpdateTx, error) {
-	// Check signatures
-	if !ed25519.Verify(sliceTo32Byte(ch.OpeningTx.Pubkeys[0]), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
-		return nil, nil, errors.New("signature 0 invalid")
-	}
-	if !ed25519.Verify(sliceTo32Byte(ch.OpeningTx.Pubkeys[1]), ev.Payload, sliceTo64Byte(ev.Signatures[1])) {
-		return nil, nil, errors.New("signature 1 invalid")
-	}
-
-	utx := &wire.UpdateTx{}
-	err := proto.Unmarshal(ev.Payload, utx)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// Check ChannelId
-	if utx.ChannelId != ch.OpeningTx.ChannelId {
-		return nil, nil, errors.New("ChannelId does not match")
-	}
-
-	// Sign envelope
-	ev.Signatures = append(ev.Signatures, [][]byte{ed25519.Sign(sliceTo64Byte(ch.EscrowProvider.Privkey), ev.Payload)[:]}...)
+	ev.Signatures = append(ev.Signatures, [][]byte{ed25519.Sign(sliceTo64Byte(ch.MyAccount.Privkey), ev.Payload)[:]}...)
 
 	return ev, utx, nil
 }
@@ -389,39 +339,3 @@ func (ch *Channel) AddFulfillment(ev *wire.Envelope) error {
 	ch.Fulfillments = append(ch.Fulfillments, ful.State)
 	return nil
 }
-
-// CheckState checks the state of a channel, evaluating OpeningTx state, UpdateTx state,
-// and the state of any Fulfillments submitted
-
-// // StartClose changes the Channel to pending closed and signs the LastFullUpdateTx
-// func (ch *Channel) StartClose() (*wire.Envelope, error) {
-// 	if ch.Phase != OPEN {
-// 		return nil, errors.New("channel must be open")
-// 	}
-// 	ch.Phase = PENDING_CLOSED
-// 	return ch.LastFullUpdateTxEnvelope, nil
-// }
-
-// // // ConfirmClose is called when we receive word from the bank that the channel is permanently closed
-// // func (ch *Channel) ConfirmClose(utx *wire.UpdateTx) error {
-// // 	if ch.Phase != PENDING_CLOSED {
-// // 		return errors.New("channel must be pending closed")
-// // 	}
-// // 	ch.LastUpdateTx = utx
-// // 	ch.LastFullUpdateTx = utx
-// // 	// Change channel state to closed
-// // 	ch.Phase = Channel_Closed
-// // 	return nil
-// // }
-
-// // func (ch *Channel) StartClose(utx *wire.UpdateTx) error {
-// // 	if ch.State != PENDING_CLOSED {
-// // 		if ch.LastFullUpdateTx.SequenceNumber > utx.SequenceNumber {
-// // 			return errors.New("update tx with higher sequence number exists")
-// // 		}
-// // 	}
-
-// // 	ch.State = PENDING_CLOSED
-// // 	ch.LastFullUpdateTx = utx
-// // 	return nil
-// // }

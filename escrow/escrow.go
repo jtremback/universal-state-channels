@@ -1,30 +1,19 @@
-package escrow
+package wallet
 
 import (
+	"crypto/rand"
 	"errors"
+	"io"
+
 	"github.com/agl/ed25519"
 	"github.com/golang/protobuf/proto"
-	"github.com/jtremback/upc/schema"
-	"github.com/jtremback/upc/wire"
-	"math"
-	"math/big"
+	"github.com/jtremback/upc-core/wire"
 )
 
-type Channel schema.Channel
-type Identity schema.Identity
-
-// func ChannelFromOpeningTx(ev *wire.Envelope) (*Channel, error) {
-// 	err := VerifySignatures(ev)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	otx := wire.OpeningTx{}
-// 	err = proto.Unmarshal(ev.Payload, &otx)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// }
+// Phases of a Tx
+// Created
+// Confirmed
+// Verified
 
 func sliceTo64Byte(slice []byte) *[64]byte {
 	var array [64]byte
@@ -38,65 +27,160 @@ func sliceTo32Byte(slice []byte) *[32]byte {
 	return &array
 }
 
-// VerifyOpeningTx checks the signatures of an OpeningTx, unmarshals it and returns it.
-func VerifyOpeningTx(ev *wire.Envelope) (*wire.OpeningTx, error) {
+func randomBytes(c uint) ([]byte, error) {
+	b := make([]byte, c)
+	n, err := io.ReadFull(rand.Reader, b)
+	if n != len(b) || err != nil {
+		return nil, err
+	}
+	return b, nil
+}
+
+type Phase int
+
+const (
+	PENDING_OPEN   Phase = 1
+	OPEN           Phase = 2
+	PENDING_CLOSED Phase = 3
+	CLOSED         Phase = 4
+)
+
+type Channel struct {
+	ChannelId string
+	Phase
+
+	OpeningTx         *wire.OpeningTx
+	OpeningTxEnvelope *wire.Envelope
+
+	LastFullUpdateTx         *wire.UpdateTx
+	LastFullUpdateTxEnvelope *wire.Envelope
+
+	*EscrowProvider `json:"-"`
+	Accounts        []*Account `json:"-"`
+
+	Fulfillments [][]byte
+}
+
+type Account struct {
+	Name    string `gorm:"primary_key"`
+	Pubkey  []byte
+	Address string
+	*EscrowProvider
+}
+
+type EscrowProvider struct {
+	Name    string `gorm:"primary_key"`
+	Pubkey  []byte
+	Address string
+}
+
+// NewEscrowProvider makes a new escrow provider
+func NewEscrowProvider(name string, address string) (*EscrowProvider, error) {
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		return nil, err
+	}
+
+	return &EscrowProvider{
+		Name:    name,
+		Address: address,
+		Pubkey:  pub[:],
+		Privkey: priv[:],
+	}, nil
+}
+
+// VerifyOpeningTx checks the signatures and state of a fully-signed OpeningTx,
+// unmarshals it and returns it.
+func (ep *EscrowProvider) VerifyOpeningTx(ev *wire.Envelope) (*wire.Envelope, *wire.OpeningTx, error) {
 	otx := wire.OpeningTx{}
 	err := proto.Unmarshal(ev.Payload, &otx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Check signatures
-	if !ed25519.Verify(sliceTo32Byte(otx.Pubkey1), ev.Payload, sliceTo64Byte(ev.Signature1)) {
-		return nil, errors.New("signature 1 invalid")
+	if !ed25519.Verify(sliceTo32Byte(otx.Pubkeys[0]), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
+		return nil, nil, errors.New("signature 0 invalid")
 	}
-	if !ed25519.Verify(sliceTo32Byte(otx.Pubkey2), ev.Payload, sliceTo64Byte(ev.Signature2)) {
-		return nil, errors.New("signature 2 invalid")
+	if !ed25519.Verify(sliceTo32Byte(otx.Pubkeys[1]), ev.Payload, sliceTo64Byte(ev.Signatures[1])) {
+		return nil, nil, errors.New("signature 1 invalid")
 	}
 
-	return &otx, nil
+	// Sign envelope
+	ev.Signatures = append(ev.Signatures, [][]byte{ed25519.Sign(sliceTo64Byte(ep.Privkey), ev.Payload)[:]}...)
+
+	return ev, &otx, nil
 }
 
-// VerifyUpdateTx checks the signatures of an UpdateTx, unmarshals it and returns it.
-func (ch *Channel) VerifyUpdateTx(ev *wire.Envelope) (*wire.UpdateTx, error) {
-	// Check signatures
-	if !ed25519.Verify(sliceTo32Byte(ch.OpeningTx.Pubkey1), ev.Payload, sliceTo64Byte(ev.Signature1)) {
-		return nil, errors.New("signature 1 invalid")
-	}
-	if !ed25519.Verify(sliceTo32Byte(ch.OpeningTx.Pubkey2), ev.Payload, sliceTo64Byte(ev.Signature2)) {
-		return nil, errors.New("signature 2 invalid")
-	}
-
-	utx := wire.UpdateTx{}
-	err := proto.Unmarshal(ev.Payload, &utx)
+// NewChannel creates a new Channel from an Envelope containing an opening transaction,
+// an Account and a Peer.
+func (ep *EscrowProvider) NewChannel(ev *wire.Envelope, accounts []*Account) (*Channel, error) {
+	otx := &wire.OpeningTx{}
+	err := proto.Unmarshal(ev.Payload, otx)
 	if err != nil {
 		return nil, err
 	}
 
-	return &utx, nil
+	ch := &Channel{
+		ChannelId:         otx.ChannelId,
+		OpeningTx:         otx,
+		OpeningTxEnvelope: ev,
+		Accounts:          accounts,
+		EscrowProvider:    ep,
+		Phase:             OPEN,
+	}
+
+	return ch, nil
 }
 
-func (ch *Channel) StartClose(utx *wire.UpdateTx) error {
-	if ch.State != schema.Channel_PendingClosed {
+// VerifyUpdateTx checks the signatures and the state of a fully-signed UpdateTx,
+// unmarshals it, signs it, and returns it.
+func (ch *Channel) VerifyUpdateTx(ev *wire.Envelope) (*wire.Envelope, *wire.UpdateTx, error) {
+	// Check signatures
+	if !ed25519.Verify(sliceTo32Byte(ch.OpeningTx.Pubkeys[0]), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
+		return nil, nil, errors.New("signature 0 invalid")
+	}
+	if !ed25519.Verify(sliceTo32Byte(ch.OpeningTx.Pubkeys[1]), ev.Payload, sliceTo64Byte(ev.Signatures[1])) {
+		return nil, nil, errors.New("signature 1 invalid")
+	}
+
+	utx := &wire.UpdateTx{}
+	err := proto.Unmarshal(ev.Payload, utx)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Check ChannelId
+	if utx.ChannelId != ch.OpeningTx.ChannelId {
+		return nil, nil, errors.New("ChannelId does not match")
+	}
+
+	// Sign envelope
+	ev.Signatures = append(ev.Signatures, [][]byte{ed25519.Sign(sliceTo64Byte(ch.EscrowProvider.Privkey), ev.Payload)[:]}...)
+
+	return ev, utx, nil
+}
+
+func (ch *Channel) StartHoldPeriod(utx *wire.UpdateTx) error {
+	if ch.Phase == PENDING_CLOSED {
 		if ch.LastFullUpdateTx.SequenceNumber > utx.SequenceNumber {
 			return errors.New("update tx with higher sequence number exists")
 		}
 	}
-
-	ch.State = schema.Channel_PendingClosed
+	ch.Phase = PENDING_CLOSED
 	ch.LastFullUpdateTx = utx
 	return nil
 }
 
 // AddFulfillment verifies a fulfillment's signature and adds it to the Channel's
 // Fulfillments array.
-func (ch *Channel) AddFulfillment(ev *wire.Envelope, eval func()) error {
-	if ch.State != schema.Channel_PendingClosed {
+func (ch *Channel) AddFulfillment(ev *wire.Envelope) error {
+	if ch.Phase != PENDING_CLOSED {
 		return errors.New("channel must be pending closed")
 	}
 
-	if !ed25519.Verify(sliceTo32Byte(ch.OpeningTx.Pubkey1), ev.Payload, sliceTo64Byte(ev.Signature1)) ||
-		!ed25519.Verify(sliceTo32Byte(ch.OpeningTx.Pubkey2), ev.Payload, sliceTo64Byte(ev.Signature1)) {
+	if !ed25519.Verify(sliceTo32Byte(ch.OpeningTx.Pubkeys[0]), ev.Payload, sliceTo64Byte(ev.Signatures[0])) ||
+		!ed25519.Verify(sliceTo32Byte(ch.OpeningTx.Pubkeys[1]), ev.Payload, sliceTo64Byte(ev.Signatures[1])) {
 		return errors.New("signature invalid")
 	}
 
@@ -106,73 +190,6 @@ func (ch *Channel) AddFulfillment(ev *wire.Envelope, eval func()) error {
 		return err
 	}
 
-	ch.Fulfillments = append(ch.Fulfillments, &ful)
+	ch.Fulfillments = append(ch.Fulfillments, ful.State)
 	return nil
 }
-
-// func parseConditionalMultiplier(s string) (*big.Rat, error) {
-// 	rat := big.NewRat(0, 1)
-// 	rat.SetString(s)
-// 	if rat.Cmp(big.NewRat(1, 1)) > 0 {
-// 		return rat, errors.New("conditional multiplier is larger than 1")
-// 	}
-// 	return rat, nil
-// }
-
-// func round(input float64) float64 {
-// 	if input < 0 {
-// 		return math.Ceil(input - 0.5)
-// 	}
-// 	return math.Floor(input + 0.5)
-// }
-
-// EvaluateConditions takes a function `fn` that takes 3 string arguments-
-// Name, ConditionalData, and FulfillmentData. Name is the name of the Condition,
-// ConditionalData was supplied by the condition (signed by both parties), and
-// FulfillmentData was supplied by the Fulfillment (signed by both parties).
-// fn must return a ConditionalMultiplier, a number in string form between
-// 1 and 0, expressed either as a fraction ("1/2"), or a decimal ("0.5")
-//
-// It then iterates through the Channel's fulfillments and calls fn on each of
-// them and their corresponding conditions. It multiplies the returned conditional
-// multiplier by the Condition's conditional transfer and adds the result to the
-// Condition's NetTransfer. If there are 2 Fulfillments for one condition, the
-// Fulfillment evaluating to the higher ConditionalMultiplier is used.
-// func (ch *Channel) EvaluateConditions(fn func(string, string, string) string) (int64, error) {
-// 	var fulMap map[string]*big.Rat
-
-// 	for _, ful := range ch.Fulfillments {
-// 		// Get corresponding condition
-// 		cond := ch.LastFullUpdateTx.Conditions[ful.Condition]
-// 		// Evaluate to get conditional multiplier
-// 		cm, err := parseConditionalMultiplier(fn(cond.PresetCondition, cond.Data, ful.Data))
-// 		if err != nil {
-// 			return 0, err
-// 		}
-
-// 		// Get previous conditional multiplier, if any
-// 		prevCm, ok := fulMap[ful.Condition]
-// 		if ok {
-// 			// If prevCm is lower, replace
-// 			if prevCm.Cmp(cm) < 0 {
-// 				fulMap[ful.Condition] = cm
-// 			}
-// 		} else {
-// 			// If prevCm did not exist, set to cm
-// 			fulMap[ful.Condition] = cm
-// 		}
-// 	}
-
-// 	nt := big.NewRat(ch.LastFullUpdateTx.NetTransfer, 1)
-
-// 	var r big.Rat
-// 	for _, ful := range ch.Fulfillments {
-// 		cond := ch.LastFullUpdateTx.Conditions[ful.Condition]
-// 		cm, _ := fulMap[ful.Condition]
-// 		nt.Add(nt, r.Mul(big.NewRat(cond.ConditionalTransfer, 1), cm))
-// 	}
-
-// 	n, _ := nt.Float64()
-
-// 	return int64(round(n)), nil
-// }
