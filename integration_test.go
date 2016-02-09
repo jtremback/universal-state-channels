@@ -1,10 +1,142 @@
-package arse
+package wallet
 
 import (
 	"fmt"
 	"testing"
+
+	c "github.com/jtremback/usc-core/client"
+	j "github.com/jtremback/usc-core/judge"
 )
 
+// Judge's computer
+
+var j_judge = &j.Judge{
+	Name:    "sffcu",
+	Pubkey:  []byte{166, 179, 85, 111, 208, 182, 235, 76, 4, 45, 157, 209, 98, 106, 201, 245, 59, 25, 255, 99, 66, 25, 135, 20, 5, 86, 82, 72, 97, 212, 177, 132},
+	Privkey: []byte{147, 131, 100, 59, 112, 77, 196, 211, 124, 170, 199, 79, 190, 194, 175, 244, 1, 9, 48, 255, 200, 168, 138, 165, 187, 46, 251, 28, 183, 13, 214, 5, 71, 153, 85, 86, 207, 54, 51, 205, 34, 228, 234, 81, 223, 175, 82, 180, 154, 154, 29, 46, 181, 45, 223, 143, 205, 48, 159, 75, 237, 51, 200, 0},
+}
+
+var j_c1 = &j.Account{
+	Name:   "alfred",
+	Pubkey: []byte{71, 153, 85, 86, 207, 54, 51, 205, 34, 228, 234, 81, 223, 175, 82, 180, 154, 154, 29, 46, 181, 45, 223, 143, 205, 48, 159, 75, 237, 51, 200, 0},
+	Judge:  j_judge,
+}
+
+var j_c2 = &j.Account{
+	Name:   "billary",
+	Pubkey: []byte{166, 179, 85, 111, 208, 182, 235, 76, 4, 45, 157, 209, 98, 106, 201, 245, 59, 25, 255, 99, 66, 25, 135, 20, 5, 86, 82, 72, 97, 212, 177, 132},
+	Judge:  j_judge,
+}
+
+// Client 1's computer
+
+var c1_judge = &c.Judge{
+	Name:   "sffcu",
+	Pubkey: []byte{166, 179, 85, 111, 208, 182, 235, 76, 4, 45, 157, 209, 98, 106, 201, 245, 59, 25, 255, 99, 66, 25, 135, 20, 5, 86, 82, 72, 97, 212, 177, 132},
+}
+
+var c1_MyAccount = &c.MyAccount{
+	Name:    "alfred",
+	Pubkey:  []byte{71, 153, 85, 86, 207, 54, 51, 205, 34, 228, 234, 81, 223, 175, 82, 180, 154, 154, 29, 46, 181, 45, 223, 143, 205, 48, 159, 75, 237, 51, 200, 0},
+	Privkey: []byte{147, 131, 100, 59, 112, 77, 196, 211, 124, 170, 199, 79, 190, 194, 175, 244, 1, 9, 48, 255, 200, 168, 138, 165, 187, 46, 251, 28, 183, 13, 214, 5, 71, 153, 85, 86, 207, 54, 51, 205, 34, 228, 234, 81, 223, 175, 82, 180, 154, 154, 29, 46, 181, 45, 223, 143, 205, 48, 159, 75, 237, 51, 200, 0},
+	Judge:   c1_judge,
+}
+
+var c1_theirAccount = &c.TheirAccount{
+	Name:   "billary",
+	Pubkey: []byte{166, 179, 85, 111, 208, 182, 235, 76, 4, 45, 157, 209, 98, 106, 201, 245, 59, 25, 255, 99, 66, 25, 135, 20, 5, 86, 82, 72, 97, 212, 177, 132},
+	Judge:  c1_judge,
+}
+
+// Client 2's computer
+
+var c2_judge = &c.Judge{
+	Name:   "sffcu",
+	Pubkey: []byte{166, 179, 85, 111, 208, 182, 235, 76, 4, 45, 157, 209, 98, 106, 201, 245, 59, 25, 255, 99, 66, 25, 135, 20, 5, 86, 82, 72, 97, 212, 177, 132},
+}
+
+var c2_myAccount = &c.MyAccount{
+	Name:    "billary",
+	Pubkey:  []byte{166, 179, 85, 111, 208, 182, 235, 76, 4, 45, 157, 209, 98, 106, 201, 245, 59, 25, 255, 99, 66, 25, 135, 20, 5, 86, 82, 72, 97, 212, 177, 132},
+	Privkey: []byte{184, 174, 56, 197, 104, 10, 100, 13, 194, 229, 111, 227, 49, 49, 126, 232, 117, 100, 207, 170, 154, 36, 118, 153, 143, 150, 182, 228, 98, 161, 144, 112, 166, 179, 85, 111, 208, 182, 235, 76, 4, 45, 157, 209, 98, 106, 201, 245, 59, 25, 255, 99, 66, 25, 135, 20, 5, 86, 82, 72, 97, 212, 177, 132},
+	Judge:   c2_judge,
+}
+
+var c2_theirAccount = &c.TheirAccount{
+	Name:   "alfred",
+	Pubkey: []byte{71, 153, 85, 86, 207, 54, 51, 205, 34, 228, 234, 81, 223, 175, 82, 180, 154, 154, 29, 46, 181, 45, 223, 143, 205, 48, 159, 75, 237, 51, 200, 0},
+	Judge:  c2_judge,
+}
+
 func Test(t *testing.T) {
-	fmt.Println("ar")
+	otx, err := c1_MyAccount.NewOpeningTx(c1_theirAccount, []byte{166, 179}, 86400)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ev, err := c1_MyAccount.SignOpeningTx(otx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// --- Send to second party ---
+
+	ev, otx, err = c2_myAccount.ConfirmOpeningTx(ev)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// --- Send to judge ---
+
+	ev, otx, err = j_judge.VerifyOpeningTx(ev)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	jch, err := j_judge.NewChannel(ev, []*j.Account{j_c1, j_c2})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// --- Back to accounts ---
+
+	ch1, err := c1_MyAccount.NewChannel(ev, c1_MyAccount, c1_theirAccount)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ch2, err := c2_myAccount.NewChannel(ev, c2_myAccount, c2_theirAccount)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Make update tx
+
+	utx, err := ch1.NewUpdateTx([]byte{164, 179}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ev, err = ch1.SignUpdateTx(utx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// --- Send to second party ---
+
+	ev, utx, err = ch2.ConfirmUpdateTx(ev)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// --- Send to judge ---
+
+	ev, utx, err = jch.VerifyUpdateTx(ev)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = jch.StartHoldPeriod(utx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println("shibby")
+
 }

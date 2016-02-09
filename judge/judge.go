@@ -1,4 +1,4 @@
-package wallet
+package judge
 
 import (
 	"crypto/rand"
@@ -7,7 +7,7 @@ import (
 
 	"github.com/agl/ed25519"
 	"github.com/golang/protobuf/proto"
-	"github.com/jtremback/upc-core/wire"
+	"github.com/jtremback/usc-core/wire"
 )
 
 // Phases of a Tx
@@ -55,33 +55,34 @@ type Channel struct {
 	LastFullUpdateTx         *wire.UpdateTx
 	LastFullUpdateTxEnvelope *wire.Envelope
 
-	*EscrowProvider `json:"-"`
-	Accounts        []*Account `json:"-"`
+	Judge    *Judge
+	Accounts []*Account
 
 	Fulfillments [][]byte
 }
 
 type Account struct {
-	Name    string `gorm:"primary_key"`
+	Name    string
 	Pubkey  []byte
 	Address string
-	*EscrowProvider
+	*Judge
 }
 
-type EscrowProvider struct {
-	Name    string `gorm:"primary_key"`
+type Judge struct {
+	Name    string
 	Pubkey  []byte
+	Privkey []byte
 	Address string
 }
 
-// NewEscrowProvider makes a new escrow provider
-func NewEscrowProvider(name string, address string) (*EscrowProvider, error) {
+// NewJudge makes a new judge
+func NewJudge(name string, address string) (*Judge, error) {
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		return nil, err
 	}
 
-	return &EscrowProvider{
+	return &Judge{
 		Name:    name,
 		Address: address,
 		Pubkey:  pub[:],
@@ -91,7 +92,7 @@ func NewEscrowProvider(name string, address string) (*EscrowProvider, error) {
 
 // VerifyOpeningTx checks the signatures and state of a fully-signed OpeningTx,
 // unmarshals it and returns it.
-func (ep *EscrowProvider) VerifyOpeningTx(ev *wire.Envelope) (*wire.Envelope, *wire.OpeningTx, error) {
+func (ep *Judge) VerifyOpeningTx(ev *wire.Envelope) (*wire.Envelope, *wire.OpeningTx, error) {
 	otx := wire.OpeningTx{}
 	err := proto.Unmarshal(ev.Payload, &otx)
 	if err != nil {
@@ -114,7 +115,7 @@ func (ep *EscrowProvider) VerifyOpeningTx(ev *wire.Envelope) (*wire.Envelope, *w
 
 // NewChannel creates a new Channel from an Envelope containing an opening transaction,
 // an Account and a Peer.
-func (ep *EscrowProvider) NewChannel(ev *wire.Envelope, accounts []*Account) (*Channel, error) {
+func (ep *Judge) NewChannel(ev *wire.Envelope, accounts []*Account) (*Channel, error) {
 	otx := &wire.OpeningTx{}
 	err := proto.Unmarshal(ev.Payload, otx)
 	if err != nil {
@@ -126,7 +127,7 @@ func (ep *EscrowProvider) NewChannel(ev *wire.Envelope, accounts []*Account) (*C
 		OpeningTx:         otx,
 		OpeningTxEnvelope: ev,
 		Accounts:          accounts,
-		EscrowProvider:    ep,
+		Judge:             ep,
 		Phase:             OPEN,
 	}
 
@@ -156,7 +157,7 @@ func (ch *Channel) VerifyUpdateTx(ev *wire.Envelope) (*wire.Envelope, *wire.Upda
 	}
 
 	// Sign envelope
-	ev.Signatures = append(ev.Signatures, [][]byte{ed25519.Sign(sliceTo64Byte(ch.EscrowProvider.Privkey), ev.Payload)[:]}...)
+	ev.Signatures = append(ev.Signatures, [][]byte{ed25519.Sign(sliceTo64Byte(ch.Judge.Privkey), ev.Payload)[:]}...)
 
 	return ev, utx, nil
 }

@@ -1,4 +1,4 @@
-package wallet
+package client
 
 import (
 	"bytes"
@@ -8,7 +8,7 @@ import (
 
 	"github.com/agl/ed25519"
 	"github.com/golang/protobuf/proto"
-	"github.com/jtremback/upc-core/wire"
+	"github.com/jtremback/usc-core/wire"
 )
 
 // Phases of a Tx
@@ -62,43 +62,43 @@ type Channel struct {
 	Me           uint32
 	Fulfillments [][]byte
 
-	EscrowProvider *EscrowProvider
-	MyAccount      *MyAccount
-	TheirAccount   *TheirAccount
+	Judge        *Judge
+	MyAccount    *MyAccount
+	TheirAccount *TheirAccount
 }
 
 type MyAccount struct {
-	Name           string
-	Pubkey         []byte
-	Privkey        []byte
-	EscrowProvider *EscrowProvider
+	Name    string
+	Pubkey  []byte
+	Privkey []byte
+	Judge   *Judge
 }
 
 type TheirAccount struct {
-	Name           string
-	Pubkey         []byte
-	Address        string
-	EscrowProvider *EscrowProvider
+	Name    string
+	Pubkey  []byte
+	Address string
+	Judge   *Judge
 }
 
-type EscrowProvider struct {
+type Judge struct {
 	Name    string
 	Pubkey  []byte
 	Address string
 }
 
 // NewAccount makes a new my account
-func NewAccount(name string, address string, ep *EscrowProvider) (*MyAccount, error) {
+func NewAccount(name string, address string, ep *Judge) (*MyAccount, error) {
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		return nil, err
 	}
 
 	return &MyAccount{
-		Name:           name,
-		EscrowProvider: ep,
-		Pubkey:         pub[:],
-		Privkey:        priv[:],
+		Name:    name,
+		Judge:   ep,
+		Pubkey:  pub[:],
+		Privkey: priv[:],
 	}, nil
 }
 
@@ -159,7 +159,7 @@ func (acct *MyAccount) ConfirmOpeningTx(ev *wire.Envelope) (*wire.Envelope, *wir
 // NewChannel creates a new Channel from an Envelope containing an opening transaction,
 // an Account and a Peer.
 func (acct *MyAccount) NewChannel(ev *wire.Envelope, mAcct *MyAccount, tAcct *TheirAccount) (*Channel, error) {
-	if !ed25519.Verify(sliceTo32Byte(acct.EscrowProvider.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[len(ev.Signatures)-1])) {
+	if !ed25519.Verify(sliceTo32Byte(acct.Judge.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[len(ev.Signatures)-1])) {
 		return nil, errors.New("signature 0 invalid")
 	}
 
