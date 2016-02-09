@@ -138,8 +138,6 @@ func (acct *MyAccount) SignOpeningTx(otx *wire.OpeningTx) (*wire.Envelope, error
 	}, nil
 }
 
-// ConfirmOpeningTx checks if a partially-signed OpeningTx has the correct
-// signature from Pubkeys[0], if ok, it signs the OpeningTx.
 func (acct *MyAccount) ConfirmOpeningTx(ev *wire.Envelope) (*wire.Envelope, *wire.OpeningTx, error) {
 	otx := &wire.OpeningTx{}
 	err := proto.Unmarshal(ev.Payload, otx)
@@ -160,9 +158,8 @@ func (acct *MyAccount) ConfirmOpeningTx(ev *wire.Envelope) (*wire.Envelope, *wir
 // an Account and a Peer.
 func (acct *MyAccount) NewChannel(ev *wire.Envelope, mAcct *MyAccount, tAcct *TheirAccount) (*Channel, error) {
 	if !ed25519.Verify(sliceTo32Byte(acct.Judge.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[len(ev.Signatures)-1])) {
-		return nil, errors.New("signature 0 invalid")
+		return nil, errors.New("judge signature invalid")
 	}
-
 	otx := &wire.OpeningTx{}
 	err := proto.Unmarshal(ev.Payload, otx)
 	if err != nil {

@@ -4,8 +4,9 @@ package wire;
 message OpeningTx {
   string channel_id = 1;
   repeated bytes pubkeys = 2;
-  bytes state = 3;
-  uint32 hold_period = 4;
+  // bytes judge_pubkey = 3;
+  bytes state = 4;
+  uint32 hold_period = 5;
 }
 
 message UpdateTx {
