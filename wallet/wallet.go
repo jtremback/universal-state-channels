@@ -48,7 +48,7 @@ const (
 
 type Channel struct {
 	ChannelId string
-	Phase
+	Phase     Phase
 
 	OpeningTx         *wire.OpeningTx
 	OpeningTxEnvelope *wire.Envelope
@@ -59,58 +59,33 @@ type Channel struct {
 	LastFullUpdateTx         *wire.UpdateTx
 	LastFullUpdateTxEnvelope *wire.Envelope
 
-	*EscrowProvider `json:"-"`
-	// Accounts        []*Account `json:"-"`
-	MyAccount    *MyAccount
-	TheirAccount *TheirAccount
-
 	Me           uint32
 	Fulfillments [][]byte
+
+	EscrowProvider *EscrowProvider
+	MyAccount      *MyAccount
+	TheirAccount   *TheirAccount
 }
 
 type MyAccount struct {
-	Name    string `gorm:"primary_key"`
-	Pubkey  []byte
-	Privkey []byte
-	*EscrowProvider
+	Name           string
+	Pubkey         []byte
+	Privkey        []byte
+	EscrowProvider *EscrowProvider
 }
 
 type TheirAccount struct {
-	Name    string `gorm:"primary_key"`
-	Pubkey  []byte
-	Address string
-	*EscrowProvider
+	Name           string
+	Pubkey         []byte
+	Address        string
+	EscrowProvider *EscrowProvider
 }
 
 type EscrowProvider struct {
-	Name    string `gorm:"primary_key"`
+	Name    string
 	Pubkey  []byte
-	Privkey []byte
 	Address string
 }
-
-// // NewEscrowProvider makes a new escrow provider
-// func NewEscrowProvider(name string, address string) (*EscrowProvider, error) {
-// 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	return &EscrowProvider{
-// 		Name:    name,
-// 		Address: address,
-// 		Pubkey:  pub[:],
-// 	}, nil
-// }
-
-// // AddEscrowProvider adds an escrow provider
-// func AddEscrowProvider(name string, address string, pubkey []byte) (*EscrowProvider, error) {
-// 	return &TheirAccount{
-// 		Name:    name,
-// 		Address: address,
-// 		Pubkey:  pubkey,
-// 	}, nil
-// }
 
 // NewAccount makes a new my account
 func NewAccount(name string, address string, ep *EscrowProvider) (*MyAccount, error) {
@@ -126,16 +101,6 @@ func NewAccount(name string, address string, ep *EscrowProvider) (*MyAccount, er
 		Privkey:        priv[:],
 	}, nil
 }
-
-// // AddAccount makes a new their account
-// func AddAccount(name string, address string, pubkey []byte, ep *EscrowProvider) (*TheirAccount, error) {
-// 	return &TheirAccount{
-// 		Name:           name,
-// 		Address:        address,
-// 		EscrowProvider: ep,
-// 		Pubkey:         pubkey,
-// 	}, nil
-// }
 
 // NewOpeningTx assembles an OpeningTx
 func (acct *MyAccount) NewOpeningTx(tAcct *TheirAccount, state []byte, holdPeriod uint32) (*wire.OpeningTx, error) {
