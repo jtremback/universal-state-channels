@@ -4,9 +4,8 @@ package wire;
 message OpeningTx {
   string channel_id = 1;
   repeated bytes pubkeys = 2;
-  // bytes judge_pubkey = 3;
-  bytes state = 4;
-  uint32 hold_period = 5;
+  bytes state = 3;
+  uint32 hold_period = 4;
 }
 
 message UpdateTx {
@@ -21,14 +20,11 @@ message Fulfillment {
   bytes state = 2;
 }
 
-message Envelope {
-  enum Type {
-    OpeningTx = 0;
-    UpdateTx = 1;
-    Fulfillment = 2;
-  }
+message Cancellation {
+  string channel_id = 1;
+}
 
-  Type type = 1;
-  bytes payload = 2;
-  repeated bytes signatures = 3;
+message Envelope {
+  bytes payload = 1;
+  repeated bytes signatures = 2;
 }
