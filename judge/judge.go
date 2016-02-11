@@ -47,7 +47,7 @@ const (
 
 type Channel struct {
 	ChannelId string
-	Phase
+	Phase     Phase
 
 	OpeningTx         *wire.OpeningTx
 	OpeningTxEnvelope *wire.Envelope
@@ -65,7 +65,7 @@ type Account struct {
 	Name    string
 	Pubkey  []byte
 	Address string
-	*Judge
+	Judge   *Judge
 }
 
 type Judge struct {
