@@ -130,7 +130,6 @@ func (acct *MyAccount) SignOpeningTx(otx *wire.OpeningTx) (*wire.Envelope, error
 
 	// Make new envelope
 	return &wire.Envelope{
-		Type:    wire.Envelope_OpeningTx,
 		Payload: data,
 		Signatures: [][]byte{
 			ed25519.Sign(sliceTo64Byte(acct.Privkey), data)[:],
@@ -138,20 +137,23 @@ func (acct *MyAccount) SignOpeningTx(otx *wire.OpeningTx) (*wire.Envelope, error
 	}, nil
 }
 
-func (acct *MyAccount) ConfirmOpeningTx(ev *wire.Envelope) (*wire.Envelope, *wire.OpeningTx, error) {
+func UnmarshallOpeningTx(ev *wire.Envelope) (*wire.OpeningTx, error) {
 	otx := &wire.OpeningTx{}
 	err := proto.Unmarshal(ev.Payload, otx)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
+	return otx, nil
+}
 
+func (acct *MyAccount) ConfirmOpeningTx(ev *wire.Envelope, otx *wire.OpeningTx) (*wire.Envelope, error) {
 	if !ed25519.Verify(sliceTo32Byte(otx.Pubkeys[0]), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
-		return nil, nil, errors.New("signature 0 invalid")
+		return nil, errors.New("signature 0 invalid")
 	}
 
 	ev.Signatures = append(ev.Signatures, [][]byte{ed25519.Sign(sliceTo64Byte(acct.Privkey), ev.Payload)[:]}...)
 
-	return ev, otx, nil
+	return ev, nil
 }
 
 // NewChannel creates a new Channel from an Envelope containing an opening transaction,
@@ -200,7 +202,7 @@ func (ch *Channel) NewUpdateTx(state []byte, fast bool) (*wire.UpdateTx, error) 
 		ChannelId:      ch.ChannelId,
 		State:          state,
 		SequenceNumber: seq,
-		Fast:           false,
+		Fast:           fast,
 	}, nil
 }
 
@@ -213,7 +215,6 @@ func (ch *Channel) SignUpdateTx(utx *wire.UpdateTx) (*wire.Envelope, error) {
 	}
 	// Make new envelope
 	ev := wire.Envelope{
-		Type:       wire.Envelope_UpdateTx,
 		Payload:    data,
 		Signatures: [][]byte{ed25519.Sign(sliceTo64Byte(ch.MyAccount.Privkey), data)[:]},
 	}
