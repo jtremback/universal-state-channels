@@ -146,22 +146,26 @@ func UnmarshallOpeningTx(ev *wire.Envelope) (*wire.OpeningTx, error) {
 	return otx, nil
 }
 
-func (acct *MyAccount) ConfirmOpeningTx(ev *wire.Envelope, otx *wire.OpeningTx) (*wire.Envelope, error) {
-	if !ed25519.Verify(sliceTo32Byte(otx.Pubkeys[0]), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
-		return nil, errors.New("signature 0 invalid")
-	}
-
+func (acct *MyAccount) CosignOpeningTx(ev *wire.Envelope, otx *wire.OpeningTx) (*wire.Envelope, error) {
 	ev.Signatures = append(ev.Signatures, [][]byte{ed25519.Sign(sliceTo64Byte(acct.Privkey), ev.Payload)[:]}...)
 
 	return ev, nil
 }
 
-// NewChannel creates a new Channel from an Envelope containing an opening transaction,
-// an Account and a Peer.
-func (acct *MyAccount) NewChannel(ev *wire.Envelope, mAcct *MyAccount, tAcct *TheirAccount) (*Channel, error) {
-	if !ed25519.Verify(sliceTo32Byte(acct.Judge.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[len(ev.Signatures)-1])) {
-		return nil, errors.New("judge signature invalid")
+func CheckOpeningTxSignatures(otx *wire.OpeningTx, ev *wire.Envelope) int {
+	num := 0
+	if !ed25519.Verify(sliceTo32Byte(otx.Pubkeys[0]), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
+		num++
 	}
+	if !ed25519.Verify(sliceTo32Byte(otx.Pubkeys[1]), ev.Payload, sliceTo64Byte(ev.Signatures[1])) {
+		num++
+	}
+	return num
+}
+
+// NewChannel creates a new Channel from an Envelope containing an opening transaction,
+// an Account and a Counterparty.
+func (acct *MyAccount) NewChannel(ev *wire.Envelope, ta *TheirAccount) (*Channel, error) {
 	otx := &wire.OpeningTx{}
 	err := proto.Unmarshal(ev.Payload, otx)
 	if err != nil {
@@ -181,13 +185,19 @@ func (acct *MyAccount) NewChannel(ev *wire.Envelope, mAcct *MyAccount, tAcct *Th
 		OpeningTx:         otx,
 		OpeningTxEnvelope: ev,
 		Me:                me,
-		MyAccount:         mAcct,
-		TheirAccount:      tAcct,
-		Phase:             OPEN,
+		MyAccount:         acct,
+		TheirAccount:      ta,
+		Phase:             PENDING_OPEN,
 	}
 
 	return ch, nil
 }
+
+// func (ch *Channel) Open(ev *wire.Envelope) {
+// 	if !ed25519.Verify(sliceTo32Byte(acct.Judge.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[len(ev.Signatures)-1])) {
+// 		return nil, errors.New("judge signature invalid")
+// 	}
+// }
 
 // NewUpdateTx makes a new UpdateTx on Channel with NetTransfer changed by amount.
 func (ch *Channel) NewUpdateTx(state []byte, fast bool) (*wire.UpdateTx, error) {
@@ -270,16 +280,16 @@ func (ch *Channel) ConfirmUpdateTx(ev *wire.Envelope) (*wire.Envelope, *wire.Upd
 	return ev, utx, nil
 }
 
-func (ch *Channel) StartHoldPeriod(utx *wire.UpdateTx) error {
-	if ch.Phase == PENDING_CLOSED {
-		if ch.LastFullUpdateTx.SequenceNumber > utx.SequenceNumber {
-			return errors.New("update tx with higher sequence number exists")
-		}
-	}
-	ch.Phase = PENDING_CLOSED
-	ch.LastFullUpdateTx = utx
-	return nil
-}
+// func (ch *Channel) StartHoldPeriod(utx *wire.UpdateTx) error {
+// 	if ch.Phase == PENDING_CLOSED {
+// 		if ch.LastFullUpdateTx.SequenceNumber > utx.SequenceNumber {
+// 			return errors.New("update tx with higher sequence number exists")
+// 		}
+// 	}
+// 	ch.Phase = PENDING_CLOSED
+// 	ch.LastFullUpdateTx = utx
+// 	return nil
+// }
 
 // AddFulfillment verifies a fulfillment's signature and adds it to the Channel's
 // Fulfillments array.
