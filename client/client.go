@@ -53,8 +53,8 @@ type Channel struct {
 	OpeningTx         *wire.OpeningTx
 	OpeningTxEnvelope *wire.Envelope
 
-	LastUpdateTx         *wire.UpdateTx
-	LastUpdateTxEnvelope *wire.Envelope
+	ProposedUpdateTx         *wire.UpdateTx
+	ProposedUpdateTxEnvelope *wire.Envelope
 
 	LastFullUpdateTx         *wire.UpdateTx
 	LastFullUpdateTxEnvelope *wire.Envelope
@@ -137,7 +137,7 @@ func (acct *MyAccount) SignOpeningTx(otx *wire.OpeningTx) (*wire.Envelope, error
 	}, nil
 }
 
-func UnmarshallOpeningTx(ev *wire.Envelope) (*wire.OpeningTx, error) {
+func UnpackageOpeningTx(ev *wire.Envelope) (*wire.OpeningTx, error) {
 	otx := &wire.OpeningTx{}
 	err := proto.Unmarshal(ev.Payload, otx)
 	if err != nil {
@@ -146,26 +146,29 @@ func UnmarshallOpeningTx(ev *wire.Envelope) (*wire.OpeningTx, error) {
 	return otx, nil
 }
 
-func (acct *MyAccount) CosignOpeningTx(ev *wire.Envelope, otx *wire.OpeningTx) (*wire.Envelope, error) {
+func (acct *MyAccount) SignEnvelope(ev *wire.Envelope) *wire.Envelope {
 	ev.Signatures = append(ev.Signatures, [][]byte{ed25519.Sign(sliceTo64Byte(acct.Privkey), ev.Payload)[:]}...)
 
-	return ev, nil
+	return ev
 }
 
-func CheckOpeningTxSignatures(otx *wire.OpeningTx, ev *wire.Envelope) int {
-	num := 0
-	if !ed25519.Verify(sliceTo32Byte(otx.Pubkeys[0]), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
-		num++
+func (ch *Channel) CheckSignatures(ev *wire.Envelope) int {
+	res := 0
+	if ed25519.Verify(sliceTo32Byte(ch.MyAccount.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
+		res++
 	}
-	if !ed25519.Verify(sliceTo32Byte(otx.Pubkeys[1]), ev.Payload, sliceTo64Byte(ev.Signatures[1])) {
-		num++
+	if ed25519.Verify(sliceTo32Byte(ch.TheirAccount.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[1])) {
+		res++
 	}
-	return num
+	if ed25519.Verify(sliceTo32Byte(ch.Judge.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[2])) {
+		res++
+	}
+	return res
 }
 
 // NewChannel creates a new Channel from an Envelope containing an opening transaction,
 // an Account and a Counterparty.
-func (acct *MyAccount) NewChannel(ev *wire.Envelope, ta *TheirAccount) (*Channel, error) {
+func NewChannel(ev *wire.Envelope, ma *MyAccount, ta *TheirAccount) (*Channel, error) {
 	otx := &wire.OpeningTx{}
 	err := proto.Unmarshal(ev.Payload, otx)
 	if err != nil {
@@ -175,7 +178,7 @@ func (acct *MyAccount) NewChannel(ev *wire.Envelope, ta *TheirAccount) (*Channel
 	// Who is Me?
 	var me uint32
 	for i, k := range otx.Pubkeys {
-		if bytes.Compare(acct.Pubkey, k) == 0 {
+		if bytes.Compare(ma.Pubkey, k) == 0 {
 			me = uint32(i)
 		}
 	}
@@ -185,7 +188,7 @@ func (acct *MyAccount) NewChannel(ev *wire.Envelope, ta *TheirAccount) (*Channel
 		OpeningTx:         otx,
 		OpeningTxEnvelope: ev,
 		Me:                me,
-		MyAccount:         acct,
+		MyAccount:         ma,
 		TheirAccount:      ta,
 		Phase:             PENDING_OPEN,
 	}
@@ -193,15 +196,29 @@ func (acct *MyAccount) NewChannel(ev *wire.Envelope, ta *TheirAccount) (*Channel
 	return ch, nil
 }
 
-// func (ch *Channel) Open(ev *wire.Envelope) {
-// 	if !ed25519.Verify(sliceTo32Byte(acct.Judge.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[len(ev.Signatures)-1])) {
-// 		return nil, errors.New("judge signature invalid")
-// 	}
-// }
+func (ch *Channel) Open(ev *wire.Envelope, otx *wire.OpeningTx) error {
+	if ed25519.Verify(sliceTo32Byte(ch.MyAccount.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
+		return errors.New("my account signature invalid")
+	}
+	if ed25519.Verify(sliceTo32Byte(ch.TheirAccount.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[1])) {
+		return errors.New("their account signature invalid")
+	}
+	if ed25519.Verify(sliceTo32Byte(ch.Judge.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[2])) {
+		return errors.New("judge signature invalid")
+	}
+
+	if bytes.Compare(ev.Payload, ch.OpeningTxEnvelope.Payload) != 0 {
+		return errors.New("opening tx invalid")
+	}
+
+	ch.Phase = OPEN
+
+	return nil
+}
 
 // NewUpdateTx makes a new UpdateTx on Channel with NetTransfer changed by amount.
 func (ch *Channel) NewUpdateTx(state []byte, fast bool) (*wire.UpdateTx, error) {
-	lst := ch.LastUpdateTx
+	lst := ch.ProposedUpdateTx
 	var seq uint32
 	if lst != nil {
 		seq = lst.SequenceNumber + 1
@@ -232,6 +249,34 @@ func (ch *Channel) SignUpdateTx(utx *wire.UpdateTx) (*wire.Envelope, error) {
 	return &ev, nil
 }
 
+func (ch *Channel) CheckUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
+	switch ch.Me {
+	case 0:
+		if !ed25519.Verify(sliceTo32Byte(ch.TheirAccount.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[1])) {
+			return errors.New("signature not valid")
+		}
+	case 1:
+		if !ed25519.Verify(sliceTo32Byte(ch.TheirAccount.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
+			return errors.New("signature not valid")
+		}
+	}
+
+	// Check ChannelId
+	if utx.ChannelId != ch.OpeningTx.ChannelId {
+		return errors.New("channel id incorrect")
+	}
+
+	lst := ch.ProposedUpdateTx
+
+	if lst != nil {
+		if lst.SequenceNumber < utx.SequenceNumber {
+			return errors.New("sequence number not valid")
+		}
+	}
+
+	return nil
+}
+
 // ConfirmUpdateTx takes an Envelope containing a UpdateTx with one
 // signature and checks the signature, as well as the sequence number. It also
 // calls fn to verify the state. If all factors are correct, it signs the UpdateTx
@@ -241,15 +286,13 @@ func (ch *Channel) ConfirmUpdateTx(ev *wire.Envelope) (*wire.Envelope, *wire.Upd
 		return nil, nil, errors.New("channel must be open")
 	}
 
-	// Read signature from correct slot
-	// Copy signature and pubkey
 	switch ch.Me {
 	case 0:
-		if !ed25519.Verify(sliceTo32Byte(ch.OpeningTx.Pubkeys[1]), ev.Payload, sliceTo64Byte(ev.Signatures[1])) {
+		if !ed25519.Verify(sliceTo32Byte(ch.TheirAccount.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[1])) {
 			return nil, nil, errors.New("invalid signature")
 		}
 	case 1:
-		if !ed25519.Verify(sliceTo32Byte(ch.OpeningTx.Pubkeys[0]), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
+		if !ed25519.Verify(sliceTo32Byte(ch.TheirAccount.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
 			return nil, nil, errors.New("invalid signature")
 		}
 	}
@@ -265,11 +308,10 @@ func (ch *Channel) ConfirmUpdateTx(ev *wire.Envelope) (*wire.Envelope, *wire.Upd
 		return nil, nil, errors.New("ChannelId does not match")
 	}
 
-	lst := ch.LastUpdateTx
+	lst := ch.ProposedUpdateTx
 
 	if lst != nil {
-		// Check last sequence number
-		if lst.SequenceNumber+1 != utx.SequenceNumber {
+		if lst.SequenceNumber < utx.SequenceNumber {
 			return nil, nil, errors.New("invalid sequence number")
 		}
 	}
