@@ -145,13 +145,7 @@ func (acct *Account) SignEnvelope(ev *wire.Envelope) *wire.Envelope {
 
 // NewChannel creates a new Channel from an Envelope containing an opening transaction,
 // an Account and a Counterparty.
-func NewChannel(ev *wire.Envelope, acct *Account, cpt *Counterparty) (*Channel, error) {
-	otx := &wire.OpeningTx{}
-	err := proto.Unmarshal(ev.Payload, otx)
-	if err != nil {
-		return nil, err
-	}
-
+func NewChannel(ev *wire.Envelope, otx *wire.OpeningTx, acct *Account, cpt *Counterparty) (*Channel, error) {
 	// Who is Me?
 	var me uint32
 	for i, k := range otx.Pubkeys {
