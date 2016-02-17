@@ -72,7 +72,6 @@ type Judge struct {
 	Name    string
 	Pubkey  []byte
 	Privkey []byte
-	Address string
 }
 
 // NewJudge makes a new judge
@@ -84,7 +83,6 @@ func NewJudge(name string, address string) (*Judge, error) {
 
 	return &Judge{
 		Name:    name,
-		Address: address,
 		Pubkey:  pub[:],
 		Privkey: priv[:],
 	}, nil
