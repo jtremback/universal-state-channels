@@ -87,7 +87,7 @@ type Judge struct {
 	Address string
 }
 
-// NewAccount makes a new my account
+// NewAccount makes a new account
 func NewAccount(name string, address string, ep *Judge) (*Account, error) {
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
@@ -137,33 +137,10 @@ func (acct *Account) SignOpeningTx(otx *wire.OpeningTx) (*wire.Envelope, error) 
 	}, nil
 }
 
-func UnpackageOpeningTx(ev *wire.Envelope) (*wire.OpeningTx, error) {
-	otx := &wire.OpeningTx{}
-	err := proto.Unmarshal(ev.Payload, otx)
-	if err != nil {
-		return nil, err
-	}
-	return otx, nil
-}
-
 func (acct *Account) SignEnvelope(ev *wire.Envelope) *wire.Envelope {
 	ev.Signatures = append(ev.Signatures, [][]byte{ed25519.Sign(sliceTo64Byte(acct.Privkey), ev.Payload)[:]}...)
 
 	return ev
-}
-
-func (ch *Channel) CheckSignatures(ev *wire.Envelope) int {
-	res := 0
-	if ed25519.Verify(sliceTo32Byte(ch.Account.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
-		res++
-	}
-	if ed25519.Verify(sliceTo32Byte(ch.Counterparty.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[1])) {
-		res++
-	}
-	if ed25519.Verify(sliceTo32Byte(ch.Judge.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[2])) {
-		res++
-	}
-	return res
 }
 
 // NewChannel creates a new Channel from an Envelope containing an opening transaction,

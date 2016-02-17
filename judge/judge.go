@@ -88,7 +88,7 @@ func NewJudge(name string, address string) (*Judge, error) {
 	}, nil
 }
 
-// VerifyOpeningTx checks the signatures and state of a fully-signed OpeningTx,
+// VerifyOpeningTx checks the signatures of a fully-signed OpeningTx,
 // unmarshals it and returns it.
 func (ep *Judge) VerifyOpeningTx(ev *wire.Envelope) (*wire.Envelope, *wire.OpeningTx, error) {
 	otx := wire.OpeningTx{}
