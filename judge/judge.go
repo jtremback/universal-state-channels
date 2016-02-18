@@ -5,9 +5,9 @@ import (
 	"crypto/rand"
 	"errors"
 	"io"
+	"time"
 
 	"github.com/agl/ed25519"
-	"github.com/golang/protobuf/proto"
 	"github.com/jtremback/usc-core/wire"
 )
 
@@ -55,6 +55,7 @@ type Channel struct {
 
 	LastFullUpdateTx         *wire.UpdateTx
 	LastFullUpdateTxEnvelope *wire.Envelope
+	LastFullUpdateTxTime     time.Time
 
 	Judge    *Judge
 	Accounts []*Account
@@ -120,48 +121,45 @@ func (jd *Judge) SignEnvelope(ev *wire.Envelope) *wire.Envelope {
 	return ev
 }
 
-// VerifyUpdateTx checks the signatures and the state of a fully-signed UpdateTx,
-// unmarshals it, signs it, and returns it.
-func (ch *Channel) VerifyUpdateTx(ev *wire.Envelope) (*wire.Envelope, *wire.UpdateTx, error) {
+// VerifyUpdateTx checks the signatures of a fully-signed UpdateTx,
+func (ch *Channel) VerifyUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
 	// Check signatures
 	if !ed25519.Verify(sliceTo32Byte(ch.OpeningTx.Pubkeys[0]), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
-		return nil, nil, errors.New("signature 0 invalid")
+		return errors.New("signature 0 invalid")
 	}
 	if !ed25519.Verify(sliceTo32Byte(ch.OpeningTx.Pubkeys[1]), ev.Payload, sliceTo64Byte(ev.Signatures[1])) {
-		return nil, nil, errors.New("signature 1 invalid")
-	}
-
-	utx := &wire.UpdateTx{}
-	err := proto.Unmarshal(ev.Payload, utx)
-	if err != nil {
-		return nil, nil, err
+		return errors.New("signature 1 invalid")
 	}
 
 	// Check ChannelId
 	if utx.ChannelId != ch.OpeningTx.ChannelId {
-		return nil, nil, errors.New("ChannelId does not match")
+		return errors.New("ChannelId does not match")
 	}
 
-	// Sign envelope
-	ev.Signatures = append(ev.Signatures, [][]byte{ed25519.Sign(sliceTo64Byte(ch.Judge.Privkey), ev.Payload)[:]}...)
-
-	return ev, utx, nil
+	return nil
 }
 
 func (ch *Channel) StartHoldPeriod(utx *wire.UpdateTx) error {
-	if ch.Phase == PENDING_CLOSED {
+	if ch.Phase == OPEN {
+		ch.Phase = PENDING_CLOSED
+		ch.LastFullUpdateTx = utx
+		ch.LastFullUpdateTxTime = time.Now()
+	} else if ch.Phase == PENDING_CLOSED {
 		if ch.LastFullUpdateTx.SequenceNumber > utx.SequenceNumber {
 			return errors.New("update tx with higher sequence number exists")
 		}
+		ch.LastFullUpdateTx = utx
 	}
-	ch.Phase = PENDING_CLOSED
-	ch.LastFullUpdateTx = utx
 	return nil
+}
+
+func (ch *Channel) CloseChannel() {
+	ch.Phase = CLOSED
 }
 
 // AddFulfillment verifies a fulfillment's signature and adds it to the Channel's
 // Fulfillments array.
-func (ch *Channel) AddFulfillment(ev *wire.Envelope) error {
+func (ch *Channel) AddFulfillment(ev *wire.Envelope, ful *wire.Fulfillment) error {
 	if ch.Phase != PENDING_CLOSED {
 		return errors.New("channel must be pending closed")
 	}
@@ -169,12 +167,6 @@ func (ch *Channel) AddFulfillment(ev *wire.Envelope) error {
 	if !ed25519.Verify(sliceTo32Byte(ch.OpeningTx.Pubkeys[0]), ev.Payload, sliceTo64Byte(ev.Signatures[0])) ||
 		!ed25519.Verify(sliceTo32Byte(ch.OpeningTx.Pubkeys[1]), ev.Payload, sliceTo64Byte(ev.Signatures[1])) {
 		return errors.New("signature invalid")
-	}
-
-	ful := wire.Fulfillment{}
-	err := proto.Unmarshal(ev.Payload, &ful)
-	if err != nil {
-		return err
 	}
 
 	ch.Fulfillments = append(ch.Fulfillments, ful.State)
