@@ -89,47 +89,6 @@ func NewJudge(name string, address string) (*Judge, error) {
 	}, nil
 }
 
-// func (jd *Judge) CheckOpeningTx(ev *wire.Envelope) error {
-// 	otx := wire.OpeningTx{}
-// 	err := proto.Unmarshal(ev.Payload, &otx)
-// 	if err != nil {
-// 		return errors.New("json error")
-// 	}
-
-// 	// Check signatures
-// 	if !ed25519.Verify(sliceTo32Byte(otx.Pubkeys[0]), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
-// 		return errors.New("signature 0 invalid")
-// 	}
-// 	if !ed25519.Verify(sliceTo32Byte(otx.Pubkeys[1]), ev.Payload, sliceTo64Byte(ev.Signatures[1])) {
-// 		return errors.New("signature 1 invalid")
-// 	}
-
-// 	return nil
-// }
-
-// // VerifyOpeningTx checks the signatures of a fully-signed OpeningTx,
-// // unmarshals it and returns it.
-// func (jd *Judge) VerifyOpeningTx(ev *wire.Envelope) (*wire.Envelope, *wire.OpeningTx, error) {
-// 	otx := wire.OpeningTx{}
-// 	err := proto.Unmarshal(ev.Payload, &otx)
-// 	if err != nil {
-// 		return nil, nil, err
-// 	}
-
-// 	// Check signatures
-// 	if !ed25519.Verify(sliceTo32Byte(otx.Pubkeys[0]), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
-// 		return nil, nil, errors.New("signature 0 invalid")
-// 	}
-// 	if !ed25519.Verify(sliceTo32Byte(otx.Pubkeys[1]), ev.Payload, sliceTo64Byte(ev.Signatures[1])) {
-// 		return nil, nil, errors.New("signature 1 invalid")
-// 	}
-
-// 	// Sign envelope
-// 	ev.Signatures = append(ev.Signatures, [][]byte{ed25519.Sign(sliceTo64Byte(jd.Privkey), ev.Payload)[:]}...)
-
-// 	return ev, &otx, nil
-// }
-
 // NewChannel creates a new Channel from an Envelope containing an opening transaction,
 // an Account and a Peer.
 func (jd *Judge) AddChannel(ev *wire.Envelope, otx *wire.OpeningTx, acct0 *Account, acct1 *Account) (*Channel, error) {
