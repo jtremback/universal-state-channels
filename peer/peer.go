@@ -59,8 +59,8 @@ type Channel struct {
 	LastFullUpdateTx         *wire.UpdateTx
 	LastFullUpdateTxEnvelope *wire.Envelope
 
-	Me           uint32
-	Fulfillments [][]byte
+	Me          uint32
+	FollowOnTxs []*wire.Envelope
 
 	Judge        *Judge
 	Account      *Account
@@ -301,24 +301,17 @@ func (ch *Channel) CheckFinalUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) (*w
 	return nil, nil
 }
 
-// AddFulfillment verifies a fulfillment's signature and adds it to the Channel's
-// Fulfillments array.
-func (ch *Channel) AddFulfillment(ev *wire.Envelope) error {
+// AddFollowOnTx verifies a FollowOnTx's signature and adds it to the Channel's
+// FollowOnTxs array.
+func (ch *Channel) AddFollowOnTx(ev *wire.Envelope) error {
 	if ch.Phase != PENDING_CLOSED {
 		return errors.New("channel must be pending closed")
 	}
 
-	if !ed25519.Verify(sliceTo32Byte(ch.OpeningTx.Pubkeys[0]), ev.Payload, sliceTo64Byte(ev.Signatures[0])) ||
-		!ed25519.Verify(sliceTo32Byte(ch.OpeningTx.Pubkeys[1]), ev.Payload, sliceTo64Byte(ev.Signatures[1])) {
+	if !ed25519.Verify(sliceTo32Byte(ch.Counterparty.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
 		return errors.New("signature invalid")
 	}
 
-	ful := wire.Fulfillment{}
-	err := proto.Unmarshal(ev.Payload, &ful)
-	if err != nil {
-		return err
-	}
-
-	ch.Fulfillments = append(ch.Fulfillments, ful.State)
+	ch.FollowOnTxs = append(ch.FollowOnTxs, ev)
 	return nil
 }

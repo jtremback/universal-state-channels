@@ -15,7 +15,7 @@ message UpdateTx {
   bytes state = 4;
 }
 
-message FollowOnData {
+message FollowOnTx {
   string channel_id = 1;
   bytes state = 2;
 }
@@ -25,13 +25,6 @@ message Cancellation {
 }
 
 message Envelope {
-  enum Type {
-    OpeningTx = 0;
-    UpdateTx = 1;
-    FollowOnData = 2;
-    Cancellation = 3;
-  }
-  Type type = 1;
-  bytes payload = 2;
-  repeated bytes signatures = 3;
+  bytes payload = 1;
+  repeated bytes signatures = 2;
 }

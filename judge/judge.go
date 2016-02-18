@@ -60,7 +60,7 @@ type Channel struct {
 	Judge    *Judge
 	Accounts []*Account
 
-	Fulfillments [][]byte
+	FollowOnTxs []*wire.Envelope
 }
 
 type Account struct {
@@ -157,18 +157,18 @@ func (ch *Channel) CloseChannel() {
 	ch.Phase = CLOSED
 }
 
-// AddFulfillment verifies a fulfillment's signature and adds it to the Channel's
-// Fulfillments array.
-func (ch *Channel) AddFulfillment(ev *wire.Envelope, ful *wire.Fulfillment) error {
+// AddFollowOnTx verifies a FollowOnTx's signature and adds it to the Channel's
+// FollowOnTxs array.
+func (ch *Channel) AddFollowOnTx(ev *wire.Envelope) error {
 	if ch.Phase != PENDING_CLOSED {
 		return errors.New("channel must be pending closed")
 	}
 
-	if !ed25519.Verify(sliceTo32Byte(ch.OpeningTx.Pubkeys[0]), ev.Payload, sliceTo64Byte(ev.Signatures[0])) ||
-		!ed25519.Verify(sliceTo32Byte(ch.OpeningTx.Pubkeys[1]), ev.Payload, sliceTo64Byte(ev.Signatures[1])) {
+	if !ed25519.Verify(sliceTo32Byte(ch.Accounts[0].Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[0])) ||
+		!ed25519.Verify(sliceTo32Byte(ch.Accounts[1].Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
 		return errors.New("signature invalid")
 	}
 
-	ch.Fulfillments = append(ch.Fulfillments, ful.State)
+	ch.FollowOnTxs = append(ch.FollowOnTxs, ev)
 	return nil
 }
