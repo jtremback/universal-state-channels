@@ -20,8 +20,8 @@ message FollowOnTx {
   bytes state = 2;
 }
 
-message Cancellation {
-  string channel_id = 1;
+message CancellationTx {
+  string channel_id = 2;
 }
 
 message Envelope {

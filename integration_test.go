@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	c "github.com/jtremback/usc-core/client"
 	j "github.com/jtremback/usc-core/judge"
+	c "github.com/jtremback/usc-core/peer"
 )
 
 // Judge's computer
@@ -35,14 +35,14 @@ var c1_judge = &c.Judge{
 	Pubkey: []byte{197, 198, 13, 156, 213, 181, 160, 15, 105, 7, 66, 222, 66, 15, 212, 8, 172, 55, 20, 47, 34, 182, 117, 106, 213, 203, 6, 172, 119, 66, 87, 170},
 }
 
-var c1_MyAccount = &c.MyAccount{
+var c1_Account = &c.Account{
 	Name:    "alfred",
 	Pubkey:  []byte{71, 153, 85, 86, 207, 54, 51, 205, 34, 228, 234, 81, 223, 175, 82, 180, 154, 154, 29, 46, 181, 45, 223, 143, 205, 48, 159, 75, 237, 51, 200, 0},
 	Privkey: []byte{147, 131, 100, 59, 112, 77, 196, 211, 124, 170, 199, 79, 190, 194, 175, 244, 1, 9, 48, 255, 200, 168, 138, 165, 187, 46, 251, 28, 183, 13, 214, 5, 71, 153, 85, 86, 207, 54, 51, 205, 34, 228, 234, 81, 223, 175, 82, 180, 154, 154, 29, 46, 181, 45, 223, 143, 205, 48, 159, 75, 237, 51, 200, 0},
 	Judge:   c1_judge,
 }
 
-var c1_theirAccount = &c.TheirAccount{
+var c1_Counterparty = &c.Counterparty{
 	Name:   "billary",
 	Pubkey: []byte{166, 179, 85, 111, 208, 182, 235, 76, 4, 45, 157, 209, 98, 106, 201, 245, 59, 25, 255, 99, 66, 25, 135, 20, 5, 86, 82, 72, 97, 212, 177, 132},
 	Judge:  c1_judge,
@@ -55,33 +55,33 @@ var c2_judge = &c.Judge{
 	Pubkey: []byte{197, 198, 13, 156, 213, 181, 160, 15, 105, 7, 66, 222, 66, 15, 212, 8, 172, 55, 20, 47, 34, 182, 117, 106, 213, 203, 6, 172, 119, 66, 87, 170},
 }
 
-var c2_myAccount = &c.MyAccount{
+var c2_Account = &c.Account{
 	Name:    "billary",
 	Pubkey:  []byte{166, 179, 85, 111, 208, 182, 235, 76, 4, 45, 157, 209, 98, 106, 201, 245, 59, 25, 255, 99, 66, 25, 135, 20, 5, 86, 82, 72, 97, 212, 177, 132},
 	Privkey: []byte{184, 174, 56, 197, 104, 10, 100, 13, 194, 229, 111, 227, 49, 49, 126, 232, 117, 100, 207, 170, 154, 36, 118, 153, 143, 150, 182, 228, 98, 161, 144, 112, 166, 179, 85, 111, 208, 182, 235, 76, 4, 45, 157, 209, 98, 106, 201, 245, 59, 25, 255, 99, 66, 25, 135, 20, 5, 86, 82, 72, 97, 212, 177, 132},
 	Judge:   c2_judge,
 }
 
-var c2_theirAccount = &c.TheirAccount{
+var c2_Counterparty = &c.Counterparty{
 	Name:   "alfred",
 	Pubkey: []byte{71, 153, 85, 86, 207, 54, 51, 205, 34, 228, 234, 81, 223, 175, 82, 180, 154, 154, 29, 46, 181, 45, 223, 143, 205, 48, 159, 75, 237, 51, 200, 0},
 	Judge:  c2_judge,
 }
 
 func Test(t *testing.T) {
-	otx, err := c1_MyAccount.NewOpeningTx(c1_theirAccount, []byte{166, 179}, 86400)
+	otx, err := c1_Account.NewOpeningTx(c1_Counterparty, []byte{166, 179}, 86400)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	ev, err := c1_MyAccount.SignOpeningTx(otx)
+	ev, err := c1_Account.SignOpeningTx(otx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// --- Send to second party ---
 
-	ev, otx, err = c2_myAccount.ConfirmOpeningTx(ev)
+	ev, otx, err = c2_Account.ConfirmOpeningTx(ev)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,11 +100,11 @@ func Test(t *testing.T) {
 
 	// --- Back to accounts ---
 
-	ch1, err := c1_MyAccount.NewChannel(ev, c1_MyAccount, c1_theirAccount)
+	ch1, err := c1_Account.NewChannel(ev, c1_Account, c1_Counterparty)
 	if err != nil {
 		t.Fatal(err)
 	}
-	ch2, err := c2_myAccount.NewChannel(ev, c2_myAccount, c2_theirAccount)
+	ch2, err := c2_Account.NewChannel(ev, c2_Account, c2_Counterparty)
 	if err != nil {
 		t.Fatal(err)
 	}

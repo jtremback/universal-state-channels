@@ -143,8 +143,17 @@ func (acct *Account) SignEnvelope(ev *wire.Envelope) *wire.Envelope {
 	return ev
 }
 
-// NewChannel creates a new Channel from an Envelope containing an opening transaction,
-// an Account and a Counterparty.
+func CheckOpeningTx(ev *wire.Envelope, acct *Account, cpt *Counterparty) error {
+	if ed25519.Verify(sliceTo32Byte(acct.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
+		return errors.New("my account signature invalid")
+	}
+	if ed25519.Verify(sliceTo32Byte(cpt.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[1])) {
+		return errors.New("counterparty signature invalid")
+	}
+
+	return nil
+}
+
 func NewChannel(ev *wire.Envelope, otx *wire.OpeningTx, acct *Account, cpt *Counterparty) (*Channel, error) {
 	// Who is Me?
 	var me uint32
@@ -232,7 +241,6 @@ func (ch *Channel) CheckUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
 		}
 	}
 
-	// Check ChannelId
 	if utx.ChannelId != ch.OpeningTx.ChannelId {
 		return errors.New("channel id incorrect")
 	}
@@ -244,6 +252,9 @@ func (ch *Channel) CheckUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
 			return errors.New("sequence number not valid")
 		}
 	}
+
+	ch.ProposedUpdateTx = utx
+	ch.ProposedUpdateTxEnvelope = ev
 
 	return nil
 }

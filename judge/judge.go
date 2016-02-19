@@ -55,7 +55,8 @@ type Channel struct {
 
 	LastFullUpdateTx         *wire.UpdateTx
 	LastFullUpdateTxEnvelope *wire.Envelope
-	LastFullUpdateTxTime     time.Time
+	CloseTime                time.Time
+	CancellationTxEnvelope   *wire.Envelope
 
 	Judge    *Judge
 	Accounts []*Account
@@ -121,8 +122,7 @@ func (jd *Judge) SignEnvelope(ev *wire.Envelope) *wire.Envelope {
 	return ev
 }
 
-// VerifyUpdateTx checks the signatures of a fully-signed UpdateTx,
-func (ch *Channel) VerifyUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
+func (ch *Channel) AddUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
 	// Check signatures
 	if !ed25519.Verify(sliceTo32Byte(ch.OpeningTx.Pubkeys[0]), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
 		return errors.New("signature 0 invalid")
@@ -136,14 +136,10 @@ func (ch *Channel) VerifyUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
 		return errors.New("ChannelId does not match")
 	}
 
-	return nil
-}
-
-func (ch *Channel) StartHoldPeriod(utx *wire.UpdateTx) error {
 	if ch.Phase == OPEN {
 		ch.Phase = PENDING_CLOSED
 		ch.LastFullUpdateTx = utx
-		ch.LastFullUpdateTxTime = time.Now()
+		ch.CloseTime = time.Now()
 	} else if ch.Phase == PENDING_CLOSED {
 		if ch.LastFullUpdateTx.SequenceNumber > utx.SequenceNumber {
 			return errors.New("update tx with higher sequence number exists")
@@ -153,7 +149,25 @@ func (ch *Channel) StartHoldPeriod(utx *wire.UpdateTx) error {
 	return nil
 }
 
-func (ch *Channel) CloseChannel() {
+func (ch *Channel) AddCancellationTx(ev *wire.Envelope) error {
+	if ch.Phase != OPEN {
+		return errors.New("channel must be open")
+	}
+
+	if !ed25519.Verify(sliceTo32Byte(ch.Accounts[0].Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[0])) ||
+		!ed25519.Verify(sliceTo32Byte(ch.Accounts[1].Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
+		return errors.New("signature invalid")
+	}
+
+	if ch.Phase == OPEN {
+		ch.Phase = PENDING_CLOSED
+		ch.CancellationTxEnvelope = ev
+		ch.CloseTime = time.Now()
+	}
+	return nil
+}
+
+func (ch *Channel) ConfirmClose() {
 	ch.Phase = CLOSED
 }
 
