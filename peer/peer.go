@@ -229,34 +229,49 @@ func (ch *Channel) SignUpdateTx(utx *wire.UpdateTx) (*wire.Envelope, error) {
 	return &ev, nil
 }
 
-func (ch *Channel) CheckUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
+func (ch *Channel) CheckUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) (uint32, error) {
 	switch ch.Me {
 	case 0:
 		if !ed25519.Verify(sliceTo32Byte(ch.Counterparty.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[1])) {
-			return errors.New("signature not valid")
+			return 0, errors.New("signature not valid")
 		}
 	case 1:
 		if !ed25519.Verify(sliceTo32Byte(ch.Counterparty.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
-			return errors.New("signature not valid")
+			return 0, errors.New("signature not valid")
 		}
 	}
 
 	if utx.ChannelId != ch.OpeningTx.ChannelId {
-		return errors.New("channel id incorrect")
+		return 0, errors.New("channel id incorrect")
 	}
 
-	lst := ch.ProposedUpdateTx
+	var propSeq uint32
+	var fullSeq uint32
 
-	if lst != nil {
-		if lst.SequenceNumber < utx.SequenceNumber {
-			return errors.New("sequence number not valid")
-		}
+	if ch.ProposedUpdateTx != nil {
+		propSeq = ch.ProposedUpdateTx.SequenceNumber
+	}
+
+	if ch.LastFullUpdateTx != nil {
+		fullSeq = ch.LastFullUpdateTx.SequenceNumber
+	}
+
+	var highestSeq uint32
+
+	if propSeq > fullSeq {
+		highestSeq = propSeq
+	} else {
+		highestSeq = fullSeq
+	}
+
+	if !(utx.SequenceNumber > highestSeq) {
+		return highestSeq, errors.New("sequence number too low")
 	}
 
 	ch.ProposedUpdateTx = utx
 	ch.ProposedUpdateTxEnvelope = ev
 
-	return nil
+	return 0, nil
 }
 
 // ConfirmUpdateTx confirms a channel's proposed update tx, if it has one
