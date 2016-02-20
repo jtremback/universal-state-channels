@@ -53,10 +53,14 @@ type Channel struct {
 	OpeningTx         *wire.OpeningTx
 	OpeningTxEnvelope *wire.Envelope
 
+	ProposedUpdateTx         *wire.UpdateTx
+	ProposedUpdateTxEnvelope *wire.Envelope
+
 	LastFullUpdateTx         *wire.UpdateTx
 	LastFullUpdateTxEnvelope *wire.Envelope
-	CloseTime                time.Time
-	CancellationTxEnvelope   *wire.Envelope
+
+	CloseTime              time.Time
+	CancellationTxEnvelope *wire.Envelope
 
 	Judge    *Judge
 	Accounts []*Account
@@ -94,7 +98,7 @@ func NewJudge(name string, address string) (*Judge, error) {
 // NewChannel creates a new Channel from an Envelope containing an opening transaction,
 // an Account and a Peer.
 func (jd *Judge) AddChannel(ev *wire.Envelope, otx *wire.OpeningTx, acct0 *Account, acct1 *Account) (*Channel, error) {
-	if bytes.Compare(acct0.Pubkey, acct1.Pubkey) != 0 {
+	if bytes.Compare(acct0.Judge.Pubkey, acct1.Judge.Pubkey) != 0 {
 		return nil, errors.New("accounts do not have matching judges")
 	}
 	if !ed25519.Verify(sliceTo32Byte(otx.Pubkeys[0]), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
@@ -123,7 +127,6 @@ func (jd *Judge) SignEnvelope(ev *wire.Envelope) *wire.Envelope {
 }
 
 func (ch *Channel) AddUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
-	// Check signatures
 	if !ed25519.Verify(sliceTo32Byte(ch.OpeningTx.Pubkeys[0]), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
 		return errors.New("signature 0 invalid")
 	}
@@ -131,21 +134,24 @@ func (ch *Channel) AddUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
 		return errors.New("signature 1 invalid")
 	}
 
-	// Check ChannelId
 	if utx.ChannelId != ch.OpeningTx.ChannelId {
 		return errors.New("ChannelId does not match")
 	}
 
-	if ch.Phase == OPEN {
-		ch.Phase = PENDING_CLOSED
-		ch.LastFullUpdateTx = utx
-		ch.CloseTime = time.Now()
-	} else if ch.Phase == PENDING_CLOSED {
-		if ch.LastFullUpdateTx.SequenceNumber > utx.SequenceNumber {
-			return errors.New("update tx with higher sequence number exists")
+	if ch.ProposedUpdateTx != nil {
+		if !(ch.ProposedUpdateTx.SequenceNumber < utx.SequenceNumber) {
+			return errors.New("sequence number too low")
 		}
-		ch.LastFullUpdateTx = utx
 	}
+
+	if ch.LastFullUpdateTx != nil {
+		if !(ch.LastFullUpdateTx.SequenceNumber < utx.SequenceNumber) {
+			return errors.New("sequence number too low")
+		}
+	}
+
+	ch.ProposedUpdateTx = utx
+	ch.ProposedUpdateTxEnvelope = ev
 	return nil
 }
 

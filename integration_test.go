@@ -81,14 +81,16 @@ func Test(t *testing.T) {
 
 	// --- Send to second party ---
 
-	ev, otx, err = c2_Account.ConfirmOpeningTx(ev)
+	err = c2_Account.CheckOpeningTx(ev, c2_Counterparty)
 	if err != nil {
 		t.Fatal(err)
 	}
 
+	c2_Account.SignEnvelope(ev)
+
 	// --- Send to judge ---
 
-	ev, otx, err = j_judge.VerifyOpeningTx(ev)
+	ev, otx, err = j_judge.AddOpeningTx(ev)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -137,21 +137,19 @@ func (acct *Account) SignOpeningTx(otx *wire.OpeningTx) (*wire.Envelope, error) 
 	}, nil
 }
 
-func (acct *Account) SignEnvelope(ev *wire.Envelope) *wire.Envelope {
-	ev.Signatures = append(ev.Signatures, [][]byte{ed25519.Sign(sliceTo64Byte(acct.Privkey), ev.Payload)[:]}...)
-
-	return ev
-}
-
-func CheckOpeningTx(ev *wire.Envelope, acct *Account, cpt *Counterparty) error {
-	if ed25519.Verify(sliceTo32Byte(acct.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
-		return errors.New("my account signature invalid")
+func (acct *Account) CheckOpeningTx(ev *wire.Envelope, cpt *Counterparty) error {
+	if bytes.Compare(acct.Judge.Pubkey, cpt.Judge.Pubkey) != 0 {
+		return errors.New("accounts do not have matching judges")
 	}
 	if ed25519.Verify(sliceTo32Byte(cpt.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[1])) {
 		return errors.New("counterparty signature invalid")
 	}
 
 	return nil
+}
+
+func (acct *Account) SignEnvelope(ev *wire.Envelope) {
+	ev.Signatures = append(ev.Signatures, [][]byte{ed25519.Sign(sliceTo64Byte(acct.Privkey), ev.Payload)[:]}...)
 }
 
 func NewChannel(ev *wire.Envelope, otx *wire.OpeningTx, acct *Account, cpt *Counterparty) (*Channel, error) {
@@ -245,27 +243,16 @@ func (ch *Channel) CheckUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) (uint32,
 		return 0, errors.New("channel id incorrect")
 	}
 
-	var propSeq uint32
-	var fullSeq uint32
-
 	if ch.ProposedUpdateTx != nil {
-		propSeq = ch.ProposedUpdateTx.SequenceNumber
+		if !(ch.ProposedUpdateTx.SequenceNumber < utx.SequenceNumber) {
+			return ch.ProposedUpdateTx.SequenceNumber, errors.New("sequence number too low")
+		}
 	}
 
 	if ch.LastFullUpdateTx != nil {
-		fullSeq = ch.LastFullUpdateTx.SequenceNumber
-	}
-
-	var highestSeq uint32
-
-	if propSeq > fullSeq {
-		highestSeq = propSeq
-	} else {
-		highestSeq = fullSeq
-	}
-
-	if !(utx.SequenceNumber > highestSeq) {
-		return highestSeq, errors.New("sequence number too low")
+		if !(ch.LastFullUpdateTx.SequenceNumber < utx.SequenceNumber) {
+			return ch.LastFullUpdateTx.SequenceNumber, errors.New("sequence number too low")
+		}
 	}
 
 	ch.ProposedUpdateTx = utx
