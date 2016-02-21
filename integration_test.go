@@ -74,7 +74,14 @@ func Test(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ev, err := c1_Account.SignOpeningTx(otx)
+	ev, err := c1_Account.SerializeOpeningTx(otx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	c1_Account.SignEnvelope(ev)
+
+	ch1, err := c.NewChannel(ev, otx, c1_Account, c1_Counterparty)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,30 +93,34 @@ func Test(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	ch2, err := c.NewChannel(ev, otx, c1_Account, c1_Counterparty)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	c2_Account.SignEnvelope(ev)
 
 	// --- Send to judge ---
 
-	ev, otx, err = j_judge.AddOpeningTx(ev)
+	jch, err := j_judge.AddChannel(ev, otx, j_c1, j_c2)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	jch, err := j_judge.NewChannel(ev, []*j.Account{j_c1, j_c2})
+	jch.Confirm()
+
+	// --- Send back to accounts ---
+
+	ch1.Confirm(jch.OpeningTxEnvelope, jch.OpeningTx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// --- Back to accounts ---
+	ch2.Confirm(jch.OpeningTxEnvelope, jch.OpeningTx)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	ch1, err := c1_Account.NewChannel(ev, c1_Account, c1_Counterparty)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ch2, err := c2_Account.NewChannel(ev, c2_Account, c2_Counterparty)
-	if err != nil {
-		t.Fatal(err)
-	}
 	// Make update tx
 
 	utx, err := ch1.NewUpdateTx([]byte{164, 179}, false)
@@ -117,14 +128,16 @@ func Test(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ev, err = ch1.SignUpdateTx(utx)
+	ev, err = ch1.SerializeUpdateTx(utx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
+	ch1.Account.SignEnvelope(ev)
+
 	// --- Send to second party ---
 
-	ev, utx, err = ch2.ConfirmUpdateTx(ev)
+	num, err := ch2.CheckUpdateTx(ev, utx)
 	if err != nil {
 		t.Fatal(err)
 	}

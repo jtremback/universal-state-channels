@@ -95,8 +95,6 @@ func NewJudge(name string, address string) (*Judge, error) {
 	}, nil
 }
 
-// NewChannel creates a new Channel from an Envelope containing an opening transaction,
-// an Account and a Peer.
 func (jd *Judge) AddChannel(ev *wire.Envelope, otx *wire.OpeningTx, acct0 *Account, acct1 *Account) (*Channel, error) {
 	if bytes.Compare(acct0.Judge.Pubkey, acct1.Judge.Pubkey) != 0 {
 		return nil, errors.New("accounts do not have matching judges")
@@ -114,16 +112,19 @@ func (jd *Judge) AddChannel(ev *wire.Envelope, otx *wire.OpeningTx, acct0 *Accou
 		OpeningTxEnvelope: ev,
 		Accounts:          []*Account{acct0, acct1},
 		Judge:             jd,
-		Phase:             OPEN,
+		Phase:             PENDING_OPEN,
 	}
 
 	return ch, nil
 }
 
-func (jd *Judge) SignEnvelope(ev *wire.Envelope) *wire.Envelope {
+func (jd *Judge) SignEnvelope(ev *wire.Envelope) {
 	ev.Signatures = append(ev.Signatures, [][]byte{ed25519.Sign(sliceTo64Byte(jd.Privkey), ev.Payload)[:]}...)
+}
 
-	return ev
+func (ch *Channel) Confirm() {
+	ch.Judge.SignEnvelope(ch.OpeningTxEnvelope)
+	ch.Phase = OPEN
 }
 
 func (ch *Channel) AddUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
@@ -152,6 +153,14 @@ func (ch *Channel) AddUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
 
 	ch.ProposedUpdateTx = utx
 	ch.ProposedUpdateTxEnvelope = ev
+	return nil
+}
+
+func (ch *Channel) ConfirmUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
+	ch.Phase = PENDING_CLOSED
+	ch.ProposedUpdateTx = utx
+	ch.ProposedUpdateTxEnvelope = ev
+	ch.CloseTime = time.Now()
 	return nil
 }
 

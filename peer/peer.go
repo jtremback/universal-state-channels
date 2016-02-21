@@ -121,7 +121,7 @@ func (acct *Account) NewOpeningTx(cpt *Counterparty, state []byte, holdPeriod ui
 }
 
 // SignOpeningTx signs and serializes an opening transaction
-func (acct *Account) SignOpeningTx(otx *wire.OpeningTx) (*wire.Envelope, error) {
+func (acct *Account) SerializeOpeningTx(otx *wire.OpeningTx) (*wire.Envelope, error) {
 	// Serialize opening transaction
 	data, err := proto.Marshal(otx)
 	if err != nil {
@@ -131,9 +131,6 @@ func (acct *Account) SignOpeningTx(otx *wire.OpeningTx) (*wire.Envelope, error) 
 	// Make new envelope
 	return &wire.Envelope{
 		Payload: data,
-		Signatures: [][]byte{
-			ed25519.Sign(sliceTo64Byte(acct.Privkey), data)[:],
-		},
 	}, nil
 }
 
@@ -174,11 +171,19 @@ func NewChannel(ev *wire.Envelope, otx *wire.OpeningTx, acct *Account, cpt *Coun
 	return ch, nil
 }
 
-func (ch *Channel) Open(ev *wire.Envelope, otx *wire.OpeningTx) error {
-	if ed25519.Verify(sliceTo32Byte(ch.Account.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
+func (ch *Channel) Confirm(ev *wire.Envelope, otx *wire.OpeningTx) error {
+	var them int
+	switch ch.Me {
+	case 0:
+		them = 1
+	case 1:
+		them = 0
+	}
+
+	if ed25519.Verify(sliceTo32Byte(ch.Account.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[ch.Me])) {
 		return errors.New("my account signature invalid")
 	}
-	if ed25519.Verify(sliceTo32Byte(ch.Counterparty.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[1])) {
+	if ed25519.Verify(sliceTo32Byte(ch.Counterparty.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[them])) {
 		return errors.New("their account signature invalid")
 	}
 	if ed25519.Verify(sliceTo32Byte(ch.Judge.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[2])) {
@@ -212,7 +217,7 @@ func (ch *Channel) NewUpdateTx(state []byte, fast bool) (*wire.UpdateTx, error) 
 }
 
 // SignUpdateTx signs an update proposal and puts it in an envelope
-func (ch *Channel) SignUpdateTx(utx *wire.UpdateTx) (*wire.Envelope, error) {
+func (ch *Channel) SerializeUpdateTx(utx *wire.UpdateTx) (*wire.Envelope, error) {
 	// Serialize update transaction
 	data, err := proto.Marshal(utx)
 	if err != nil {
@@ -220,8 +225,7 @@ func (ch *Channel) SignUpdateTx(utx *wire.UpdateTx) (*wire.Envelope, error) {
 	}
 	// Make new envelope
 	ev := wire.Envelope{
-		Payload:    data,
-		Signatures: [][]byte{ed25519.Sign(sliceTo64Byte(ch.Account.Privkey), data)[:]},
+		Payload: data,
 	}
 
 	return &ev, nil
