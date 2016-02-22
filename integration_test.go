@@ -137,18 +137,20 @@ func Test(t *testing.T) {
 
 	// --- Send to second party ---
 
-	num, err := ch2.CheckUpdateTx(ev, utx)
+	err = ch2.CheckUpdateTx(ev, utx)
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	ch2.Account.SignEnvelope(ev)
 
 	// --- Send to judge ---
 
-	ev, utx, err = jch.VerifyUpdateTx(ev)
+	err = jch.AddUpdateTx(ev, utx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = jch.StartHoldPeriod(utx)
+	err = jch.ConfirmUpdateTx(ev, utx)
 	if err != nil {
 		t.Fatal(err)
 	}

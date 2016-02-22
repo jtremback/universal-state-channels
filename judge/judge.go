@@ -127,6 +127,23 @@ func (ch *Channel) Confirm() {
 	ch.Phase = OPEN
 }
 
+func (ch *Channel) HighestSeq() uint32 {
+	var num uint32
+	if ch.ProposedUpdateTx != nil {
+		if ch.ProposedUpdateTx.SequenceNumber > num {
+			num = ch.ProposedUpdateTx.SequenceNumber
+		}
+	}
+
+	if ch.LastFullUpdateTx != nil {
+		if ch.LastFullUpdateTx.SequenceNumber > num {
+			num = ch.LastFullUpdateTx.SequenceNumber
+		}
+	}
+
+	return num
+}
+
 func (ch *Channel) AddUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
 	if !ed25519.Verify(sliceTo32Byte(ch.OpeningTx.Pubkeys[0]), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
 		return errors.New("signature 0 invalid")
