@@ -17,15 +17,21 @@ import (
 // Verified
 
 func sliceTo64Byte(slice []byte) *[64]byte {
-	var array [64]byte
-	copy(array[:], slice[:64])
-	return &array
+	if len(slice) == 64 {
+		var array [64]byte
+		copy(array[:], slice[:64])
+		return &array
+	}
+	return &[64]byte{}
 }
 
 func sliceTo32Byte(slice []byte) *[32]byte {
-	var array [32]byte
-	copy(array[:], slice[:32])
-	return &array
+	if len(slice) == 32 {
+		var array [32]byte
+		copy(array[:], slice[:32])
+		return &array
+	}
+	return &[32]byte{}
 }
 
 func randomBytes(c uint) ([]byte, error) {
@@ -145,7 +151,7 @@ func (acct *Account) CheckOpeningTx(ev *wire.Envelope, cpt *Counterparty) error 
 	return nil
 }
 
-func (acct *Account) SignEnvelope(ev *wire.Envelope) {
+func (acct *Account) AppendSignature(ev *wire.Envelope) {
 	ev.Signatures = append(ev.Signatures, [][]byte{ed25519.Sign(sliceTo64Byte(acct.Privkey), ev.Payload)[:]}...)
 }
 
@@ -208,14 +214,14 @@ func (ch *Channel) HighestSeq() uint32 {
 	return num
 }
 
-func (ch *Channel) NewUpdateTx(state []byte, fast bool) (*wire.UpdateTx, error) {
+func (ch *Channel) NewUpdateTx(state []byte, fast bool) *wire.UpdateTx {
 	// Make new update transaction
 	return &wire.UpdateTx{
 		ChannelId:      ch.ChannelId,
 		State:          state,
 		SequenceNumber: ch.HighestSeq() + 1,
 		Fast:           fast,
-	}, nil
+	}
 }
 
 func (ch *Channel) SerializeUpdateTx(utx *wire.UpdateTx) (*wire.Envelope, error) {
@@ -226,15 +232,20 @@ func (ch *Channel) SerializeUpdateTx(utx *wire.UpdateTx) (*wire.Envelope, error)
 	}
 	// Make new envelope
 	ev := wire.Envelope{
-		Payload: data,
+		Payload:    data,
+		Signatures: [][]byte{[]byte{}, []byte{}},
 	}
 
 	return &ev, nil
 }
 
+func (ch *Channel) SignEnvelope(ev *wire.Envelope) {
+	ev.Signatures[ch.Me] = ed25519.Sign(sliceTo64Byte(ch.Account.Privkey), ev.Payload)[:]
+}
+
 func (ch *Channel) CheckUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
 	if !ed25519.Verify(sliceTo32Byte(ch.Counterparty.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[swap[ch.Me]])) {
-		return errors.New("signature not valid")
+		return errors.New("counterparty signature not valid")
 	}
 
 	if utx.ChannelId != ch.OpeningTx.ChannelId {

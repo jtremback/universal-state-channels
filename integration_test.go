@@ -1,7 +1,6 @@
 package wallet
 
 import (
-	"fmt"
 	"testing"
 
 	j "github.com/jtremback/usc-core/judge"
@@ -73,13 +72,12 @@ func Test(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	ev, err := c1_Account.SerializeOpeningTx(otx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	c1_Account.SignEnvelope(ev)
+	c1_Account.AppendSignature(ev)
 
 	ch1, err := c.NewChannel(ev, otx, c1_Account, c1_Counterparty)
 	if err != nil {
@@ -87,18 +85,16 @@ func Test(t *testing.T) {
 	}
 
 	// --- Send to second party ---
-
 	err = c2_Account.CheckOpeningTx(ev, c2_Counterparty)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	ch2, err := c.NewChannel(ev, otx, c1_Account, c1_Counterparty)
+	ch2, err := c.NewChannel(ev, otx, c2_Account, c2_Counterparty)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	c2_Account.SignEnvelope(ev)
+	c2_Account.AppendSignature(ev)
 
 	// --- Send to judge ---
 
@@ -122,18 +118,14 @@ func Test(t *testing.T) {
 	}
 
 	// Make update tx
-
-	utx, err := ch1.NewUpdateTx([]byte{164, 179}, false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	utx := ch1.NewUpdateTx([]byte{164, 179}, false)
 
 	ev, err = ch1.SerializeUpdateTx(utx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	ch1.Account.SignEnvelope(ev)
+	ch1.SignEnvelope(ev)
 
 	// --- Send to second party ---
 
@@ -142,7 +134,7 @@ func Test(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ch2.Account.SignEnvelope(ev)
+	ch2.SignEnvelope(ev)
 
 	// --- Send to judge ---
 
@@ -154,7 +146,6 @@ func Test(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fmt.Println("shibby")
 
 }
 
