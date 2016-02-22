@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"errors"
+	"fmt"
 	"io"
 
 	"github.com/agl/ed25519"
@@ -156,6 +157,9 @@ func (acct *Account) AppendSignature(ev *wire.Envelope) {
 }
 
 func NewChannel(ev *wire.Envelope, otx *wire.OpeningTx, acct *Account, cpt *Counterparty) (*Channel, error) {
+	if bytes.Compare(acct.Judge.Pubkey, cpt.Judge.Pubkey) != 0 {
+		return nil, errors.New("accounts do not have matching judges")
+	}
 	// Who is Me?
 	var me uint32
 	for i, k := range otx.Pubkeys {
@@ -170,6 +174,7 @@ func NewChannel(ev *wire.Envelope, otx *wire.OpeningTx, acct *Account, cpt *Coun
 		OpeningTxEnvelope: ev,
 		Me:                me,
 		Account:           acct,
+		Judge:             acct.Judge,
 		Counterparty:      cpt,
 		Phase:             PENDING_OPEN,
 	}
@@ -178,13 +183,19 @@ func NewChannel(ev *wire.Envelope, otx *wire.OpeningTx, acct *Account, cpt *Coun
 }
 
 func (ch *Channel) Confirm(ev *wire.Envelope, otx *wire.OpeningTx) error {
-	if ed25519.Verify(sliceTo32Byte(ch.Account.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[ch.Me])) {
+	if ch.Phase != PENDING_OPEN {
+		return errors.New("channel must be pending open")
+	}
+	if len(ev.Signatures) != 3 {
+		return errors.New("envelope must have 3 signatures")
+	}
+	if !ed25519.Verify(sliceTo32Byte(ch.Account.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[ch.Me])) {
 		return errors.New("my account signature invalid")
 	}
-	if ed25519.Verify(sliceTo32Byte(ch.Counterparty.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[swap[ch.Me]])) {
+	if !ed25519.Verify(sliceTo32Byte(ch.Counterparty.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[swap[ch.Me]])) {
 		return errors.New("their account signature invalid")
 	}
-	if ed25519.Verify(sliceTo32Byte(ch.Judge.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[2])) {
+	if !ed25519.Verify(sliceTo32Byte(ch.Judge.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[2])) {
 		return errors.New("judge signature invalid")
 	}
 
@@ -259,47 +270,57 @@ func (ch *Channel) CheckUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
 	return nil
 }
 
-func (ch *Channel) ConfirmUpdateTx() (*wire.Envelope, error) {
-	if ch.Phase != OPEN {
-		return nil, errors.New("channel must be open")
-	}
+// func (ch *Channel) ConfirmUpdateTx() (*wire.Envelope, error) {
+// 	if ch.Phase != OPEN {
+// 		return nil, errors.New("channel must be open")
+// 	}
 
-	if ch.TheirProposedUpdateTxEnvelope == nil {
-		return nil, errors.New("no proposed update tx")
-	}
+// 	if ch.TheirProposedUpdateTxEnvelope == nil {
+// 		return nil, errors.New("no proposed update tx")
+// 	}
 
-	ev := &wire.Envelope{}
+// 	ev := &wire.Envelope{}
 
-	utx := ch.TheirProposedUpdateTx
-	ev = ch.TheirProposedUpdateTxEnvelope
+// 	utx := ch.TheirProposedUpdateTx
+// 	ev = ch.TheirProposedUpdateTxEnvelope
 
-	ev.Signatures = append(
-		ev.Signatures,
-		[][]byte{ed25519.Sign(sliceTo64Byte(ch.Account.Privkey), ev.Payload)[:]}...,
-	)
+// 	ev.Signatures = append(
+// 		ev.Signatures,
+// 		[][]byte{ed25519.Sign(sliceTo64Byte(ch.Account.Privkey), ev.Payload)[:]}...,
+// 	)
 
-	ch.LastFullUpdateTx = utx
-	ch.LastFullUpdateTxEnvelope = ev
+// 	ch.LastFullUpdateTx = utx
+// 	ch.LastFullUpdateTxEnvelope = ev
 
-	return ev, nil
-}
+// 	return ev, nil
+// }
 
 func (ch *Channel) CheckFinalUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) (*wire.Envelope, error) {
-	if ed25519.Verify(sliceTo32Byte(ch.Account.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
+	if !(ch.Phase == PENDING_CLOSED || ch.Phase == OPEN) {
+		return nil, errors.New("channel must be open or pending closed")
+	}
+	if len(ev.Signatures) != 3 {
+		return nil, errors.New("envelope must have 3 signatures")
+	}
+	if !ed25519.Verify(sliceTo32Byte(ch.Account.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[ch.Me])) {
 		return nil, errors.New("my account signature invalid")
 	}
-	if ed25519.Verify(sliceTo32Byte(ch.Counterparty.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[1])) {
-		return nil, errors.New("their account signature invalid")
+	if !ed25519.Verify(sliceTo32Byte(ch.Counterparty.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[swap[ch.Me]])) {
+		return nil, errors.New("counterparty signature invalid")
 	}
-	if ed25519.Verify(sliceTo32Byte(ch.Judge.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[2])) {
+	if !ed25519.Verify(sliceTo32Byte(ch.Judge.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[2])) {
 		return nil, errors.New("judge signature invalid")
 	}
+	fmt.Println("shit")
 
-	if ch.Phase == PENDING_CLOSED {
-		if ch.LastFullUpdateTx.SequenceNumber > utx.SequenceNumber {
-			return ch.LastFullUpdateTxEnvelope, nil
+	if ch.LastFullUpdateTx != nil {
+		if ch.Phase == PENDING_CLOSED {
+			if ch.LastFullUpdateTx.SequenceNumber > utx.SequenceNumber {
+				return ch.LastFullUpdateTxEnvelope, nil
+			}
 		}
 	}
+
 	ch.Phase = PENDING_CLOSED
 	ch.LastFullUpdateTx = utx
 	ch.LastFullUpdateTxEnvelope = ev

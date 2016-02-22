@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	"errors"
 	"testing"
 
 	j "github.com/jtremback/usc-core/judge"
@@ -83,7 +84,6 @@ func Test(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	// --- Send to second party ---
 	err = c2_Account.CheckOpeningTx(ev, c2_Counterparty)
 	if err != nil {
@@ -126,6 +126,8 @@ func Test(t *testing.T) {
 	}
 
 	ch1.SignEnvelope(ev)
+	ch1.LastFullUpdateTx = utx
+	ch1.LastFullUpdateTxEnvelope = ev
 
 	// --- Send to second party ---
 
@@ -135,6 +137,8 @@ func Test(t *testing.T) {
 	}
 
 	ch2.SignEnvelope(ev)
+	ch2.LastFullUpdateTx = utx
+	ch2.LastFullUpdateTxEnvelope = ev
 
 	// --- Send to judge ---
 
@@ -147,6 +151,24 @@ func Test(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	j_judge.AppendSignature(ev)
+
+	// --- Back to participants ---
+	realEv, err := ch1.CheckFinalUpdateTx(ev, utx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if realEv != nil {
+		t.Fatal(errors.New("update tx with higher sequence number exists"))
+	}
+
+	realEv, err = ch1.CheckFinalUpdateTx(ev, utx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if realEv != nil {
+		t.Fatal(errors.New("update tx with higher sequence number exists"))
+	}
 }
 
 // Extra keys

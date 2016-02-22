@@ -118,12 +118,12 @@ func (jd *Judge) AddChannel(ev *wire.Envelope, otx *wire.OpeningTx, acct0 *Accou
 	return ch, nil
 }
 
-func (jd *Judge) SignEnvelope(ev *wire.Envelope) {
+func (jd *Judge) AppendSignature(ev *wire.Envelope) {
 	ev.Signatures = append(ev.Signatures, [][]byte{ed25519.Sign(sliceTo64Byte(jd.Privkey), ev.Payload)[:]}...)
 }
 
 func (ch *Channel) Confirm() {
-	ch.Judge.SignEnvelope(ch.OpeningTxEnvelope)
+	ch.Judge.AppendSignature(ch.OpeningTxEnvelope)
 	ch.Phase = OPEN
 }
 
