@@ -53,11 +53,14 @@ type Channel struct {
 	OpeningTx         *wire.OpeningTx
 	OpeningTxEnvelope *wire.Envelope
 
-	ProposedUpdateTx         *wire.UpdateTx
-	ProposedUpdateTxEnvelope *wire.Envelope
-
 	LastFullUpdateTx         *wire.UpdateTx
 	LastFullUpdateTxEnvelope *wire.Envelope
+
+	MyProposedUpdateTx         *wire.UpdateTx
+	MyProposedUpdateTxEnvelope *wire.Envelope
+
+	TheirProposedUpdateTx         *wire.UpdateTx
+	TheirProposedUpdateTxEnvelope *wire.Envelope
 
 	Me          uint32
 	FollowOnTxs []*wire.Envelope
@@ -87,7 +90,6 @@ type Judge struct {
 	Address string
 }
 
-// NewAccount makes a new account
 func NewAccount(name string, address string, ep *Judge) (*Account, error) {
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
@@ -102,7 +104,6 @@ func NewAccount(name string, address string, ep *Judge) (*Account, error) {
 	}, nil
 }
 
-// NewOpeningTx assembles an OpeningTx
 func (acct *Account) NewOpeningTx(cpt *Counterparty, state []byte, holdPeriod uint32) (*wire.OpeningTx, error) {
 	b, err := randomBytes(32)
 	chID := string(b)
@@ -120,15 +121,12 @@ func (acct *Account) NewOpeningTx(cpt *Counterparty, state []byte, holdPeriod ui
 	}, nil
 }
 
-// SignOpeningTx signs and serializes an opening transaction
 func (acct *Account) SerializeOpeningTx(otx *wire.OpeningTx) (*wire.Envelope, error) {
-	// Serialize opening transaction
 	data, err := proto.Marshal(otx)
 	if err != nil {
 		return nil, err
 	}
 
-	// Make new envelope
 	return &wire.Envelope{
 		Payload: data,
 	}, nil
@@ -199,24 +197,33 @@ func (ch *Channel) Confirm(ev *wire.Envelope, otx *wire.OpeningTx) error {
 	return nil
 }
 
-// NewUpdateTx makes a new UpdateTx on Channel with NetTransfer changed by amount.
-func (ch *Channel) NewUpdateTx(state []byte, fast bool) (*wire.UpdateTx, error) {
-	lst := ch.ProposedUpdateTx
-	var seq uint32
-	if lst != nil {
-		seq = lst.SequenceNumber + 1
+func (ch *Channel) HighestSeq() uint32 {
+	var num uint32
+	if ch.MyProposedUpdateTx != nil {
+		if ch.MyProposedUpdateTx.SequenceNumber > num {
+			num = ch.MyProposedUpdateTx.SequenceNumber
+		}
 	}
 
+	if ch.TheirProposedUpdateTx != nil {
+		if ch.TheirProposedUpdateTx.SequenceNumber > num {
+			num = ch.TheirProposedUpdateTx.SequenceNumber
+		}
+	}
+
+	return num
+}
+
+func (ch *Channel) NewUpdateTx(state []byte, fast bool) (*wire.UpdateTx, error) {
 	// Make new update transaction
 	return &wire.UpdateTx{
 		ChannelId:      ch.ChannelId,
 		State:          state,
-		SequenceNumber: seq,
+		SequenceNumber: ch.HighestSeq() + 1,
 		Fast:           fast,
 	}, nil
 }
 
-// SignUpdateTx signs an update proposal and puts it in an envelope
 func (ch *Channel) SerializeUpdateTx(utx *wire.UpdateTx) (*wire.Envelope, error) {
 	// Serialize update transaction
 	data, err := proto.Marshal(utx)
@@ -231,58 +238,42 @@ func (ch *Channel) SerializeUpdateTx(utx *wire.UpdateTx) (*wire.Envelope, error)
 	return &ev, nil
 }
 
-func (ch *Channel) CheckUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) (uint32, error) {
+func (ch *Channel) CheckUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
 	switch ch.Me {
 	case 0:
 		if !ed25519.Verify(sliceTo32Byte(ch.Counterparty.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[1])) {
-			return 0, errors.New("signature not valid")
+			return errors.New("signature not valid")
 		}
 	case 1:
 		if !ed25519.Verify(sliceTo32Byte(ch.Counterparty.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
-			return 0, errors.New("signature not valid")
+			return errors.New("signature not valid")
 		}
 	}
 
 	if utx.ChannelId != ch.OpeningTx.ChannelId {
-		return 0, errors.New("channel id incorrect")
+		return errors.New("channel id incorrect")
 	}
 
-	if ch.ProposedUpdateTx != nil {
-		if !(ch.ProposedUpdateTx.SequenceNumber < utx.SequenceNumber) {
-			return ch.ProposedUpdateTx.SequenceNumber, errors.New("sequence number too low")
-		}
+	if !(utx.SequenceNumber > ch.HighestSeq()) {
+		return errors.New("sequence number too low")
 	}
 
-	if ch.LastFullUpdateTx != nil {
-		if !(ch.LastFullUpdateTx.SequenceNumber < utx.SequenceNumber) {
-			return ch.LastFullUpdateTx.SequenceNumber, errors.New("sequence number too low")
-		}
-	}
-
-	ch.ProposedUpdateTx = utx
-	ch.ProposedUpdateTxEnvelope = ev
-
-	return 0, nil
+	return nil
 }
 
-// ConfirmUpdateTx confirms a channel's proposed update tx, if it has one
 func (ch *Channel) ConfirmUpdateTx() (*wire.Envelope, error) {
 	if ch.Phase != OPEN {
 		return nil, errors.New("channel must be open")
 	}
 
-	ev := &wire.Envelope{}
-
-	if ch.ProposedUpdateTxEnvelope == ev {
+	if ch.TheirProposedUpdateTxEnvelope == nil {
 		return nil, errors.New("no proposed update tx")
 	}
 
-	if bytes.Compare(ch.ProposedUpdateTxEnvelope.Signatures[ch.Me], []byte{}) == 0 {
-		return nil, errors.New("proposed update tx belongs to me")
-	}
+	ev := &wire.Envelope{}
 
-	utx := ch.ProposedUpdateTx
-	ev = ch.ProposedUpdateTxEnvelope
+	utx := ch.TheirProposedUpdateTx
+	ev = ch.TheirProposedUpdateTxEnvelope
 
 	ev.Signatures = append(
 		ev.Signatures,
