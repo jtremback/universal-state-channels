@@ -46,6 +46,8 @@ const (
 	CLOSED         Phase = 4
 )
 
+var swap = []int{1, 0}
+
 type Channel struct {
 	ChannelId string
 	Phase     Phase
@@ -170,18 +172,10 @@ func NewChannel(ev *wire.Envelope, otx *wire.OpeningTx, acct *Account, cpt *Coun
 }
 
 func (ch *Channel) Confirm(ev *wire.Envelope, otx *wire.OpeningTx) error {
-	var them int
-	switch ch.Me {
-	case 0:
-		them = 1
-	case 1:
-		them = 0
-	}
-
 	if ed25519.Verify(sliceTo32Byte(ch.Account.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[ch.Me])) {
 		return errors.New("my account signature invalid")
 	}
-	if ed25519.Verify(sliceTo32Byte(ch.Counterparty.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[them])) {
+	if ed25519.Verify(sliceTo32Byte(ch.Counterparty.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[swap[ch.Me]])) {
 		return errors.New("their account signature invalid")
 	}
 	if ed25519.Verify(sliceTo32Byte(ch.Judge.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[2])) {
@@ -239,15 +233,8 @@ func (ch *Channel) SerializeUpdateTx(utx *wire.UpdateTx) (*wire.Envelope, error)
 }
 
 func (ch *Channel) CheckUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
-	switch ch.Me {
-	case 0:
-		if !ed25519.Verify(sliceTo32Byte(ch.Counterparty.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[1])) {
-			return errors.New("signature not valid")
-		}
-	case 1:
-		if !ed25519.Verify(sliceTo32Byte(ch.Counterparty.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
-			return errors.New("signature not valid")
-		}
+	if !ed25519.Verify(sliceTo32Byte(ch.Counterparty.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[swap[ch.Me]])) {
+		return errors.New("signature not valid")
 	}
 
 	if utx.ChannelId != ch.OpeningTx.ChannelId {
