@@ -138,7 +138,7 @@ func (acct *Account) CheckOpeningTx(ev *wire.Envelope, cpt *Counterparty) error 
 	if bytes.Compare(acct.Judge.Pubkey, cpt.Judge.Pubkey) != 0 {
 		return errors.New("accounts do not have matching judges")
 	}
-	if ed25519.Verify(sliceTo32Byte(cpt.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[1])) {
+	if !ed25519.Verify(sliceTo32Byte(cpt.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
 		return errors.New("counterparty signature invalid")
 	}
 
