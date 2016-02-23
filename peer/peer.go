@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/rand"
 	"errors"
-	"fmt"
 	"io"
 
 	"github.com/agl/ed25519"
@@ -130,7 +129,7 @@ func (acct *Account) NewOpeningTx(cpt *Counterparty, state []byte, holdPeriod ui
 	}, nil
 }
 
-func (acct *Account) SerializeOpeningTx(otx *wire.OpeningTx) (*wire.Envelope, error) {
+func SerializeOpeningTx(otx *wire.OpeningTx) (*wire.Envelope, error) {
 	data, err := proto.Marshal(otx)
 	if err != nil {
 		return nil, err
@@ -142,11 +141,14 @@ func (acct *Account) SerializeOpeningTx(otx *wire.OpeningTx) (*wire.Envelope, er
 }
 
 func (acct *Account) CheckOpeningTx(ev *wire.Envelope, cpt *Counterparty) error {
+	if len(ev.Signatures) != 1 {
+		return errors.New("wrong number of signatures")
+	}
 	if bytes.Compare(acct.Judge.Pubkey, cpt.Judge.Pubkey) != 0 {
-		return errors.New("accounts do not have matching judges")
+		return errors.New("accounts do not have the same judge")
 	}
 	if !ed25519.Verify(sliceTo32Byte(cpt.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
-		return errors.New("counterparty signature invalid")
+		return errors.New("counterparty signature not valid")
 	}
 
 	return nil
@@ -158,7 +160,7 @@ func (acct *Account) AppendSignature(ev *wire.Envelope) {
 
 func NewChannel(ev *wire.Envelope, otx *wire.OpeningTx, acct *Account, cpt *Counterparty) (*Channel, error) {
 	if bytes.Compare(acct.Judge.Pubkey, cpt.Judge.Pubkey) != 0 {
-		return nil, errors.New("accounts do not have matching judges")
+		return nil, errors.New("accounts do not have the same judge")
 	}
 	// Who is Me?
 	var me uint32
@@ -182,25 +184,25 @@ func NewChannel(ev *wire.Envelope, otx *wire.OpeningTx, acct *Account, cpt *Coun
 	return ch, nil
 }
 
-func (ch *Channel) Confirm(ev *wire.Envelope, otx *wire.OpeningTx) error {
+func (ch *Channel) Open(ev *wire.Envelope, otx *wire.OpeningTx) error {
 	if ch.Phase != PENDING_OPEN {
-		return errors.New("channel must be pending open")
+		return errors.New("channel not PENDING_OPEN")
 	}
 	if len(ev.Signatures) != 3 {
-		return errors.New("envelope must have 3 signatures")
+		return errors.New("wrong number of signatures")
 	}
 	if !ed25519.Verify(sliceTo32Byte(ch.Account.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[ch.Me])) {
-		return errors.New("my account signature invalid")
+		return errors.New("my account signature not valid")
 	}
 	if !ed25519.Verify(sliceTo32Byte(ch.Counterparty.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[swap[ch.Me]])) {
-		return errors.New("their account signature invalid")
+		return errors.New("counterparty signature not valid")
 	}
 	if !ed25519.Verify(sliceTo32Byte(ch.Judge.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[2])) {
-		return errors.New("judge signature invalid")
+		return errors.New("judge signature not valid")
 	}
 
 	if bytes.Compare(ev.Payload, ch.OpeningTxEnvelope.Payload) != 0 {
-		return errors.New("opening tx invalid")
+		return errors.New("opening tx not valid")
 	}
 
 	ch.Phase = OPEN
@@ -226,7 +228,6 @@ func (ch *Channel) HighestSeq() uint32 {
 }
 
 func (ch *Channel) NewUpdateTx(state []byte, fast bool) *wire.UpdateTx {
-	// Make new update transaction
 	return &wire.UpdateTx{
 		ChannelId:      ch.ChannelId,
 		State:          state,
@@ -235,13 +236,12 @@ func (ch *Channel) NewUpdateTx(state []byte, fast bool) *wire.UpdateTx {
 	}
 }
 
-func (ch *Channel) SerializeUpdateTx(utx *wire.UpdateTx) (*wire.Envelope, error) {
-	// Serialize update transaction
+func SerializeUpdateTx(utx *wire.UpdateTx) (*wire.Envelope, error) {
 	data, err := proto.Marshal(utx)
 	if err != nil {
 		return nil, err
 	}
-	// Make new envelope
+
 	ev := wire.Envelope{
 		Payload:    data,
 		Signatures: [][]byte{[]byte{}, []byte{}},
@@ -250,19 +250,35 @@ func (ch *Channel) SerializeUpdateTx(utx *wire.UpdateTx) (*wire.Envelope, error)
 	return &ev, nil
 }
 
-func (ch *Channel) SignEnvelope(ev *wire.Envelope) {
+func (ch *Channel) SignUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) {
 	ev.Signatures[ch.Me] = ed25519.Sign(sliceTo64Byte(ch.Account.Privkey), ev.Payload)[:]
+	ch.MyProposedUpdateTx = utx
+	ch.MyProposedUpdateTxEnvelope = ev
+}
+
+func (ch *Channel) CosignProposedUpdateTx() *wire.Envelope {
+	ev := ch.TheirProposedUpdateTxEnvelope
+	ev.Signatures[ch.Me] = ed25519.Sign(sliceTo64Byte(ch.Account.Privkey), ev.Payload)[:]
+
+	ch.LastFullUpdateTx = ch.TheirProposedUpdateTx
+	ch.LastFullUpdateTxEnvelope = ch.TheirProposedUpdateTxEnvelope
+
+	return ev
 }
 
 func (ch *Channel) CheckUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
+	if !(ch.Phase == OPEN || ch.Phase == PENDING_CLOSED) {
+		return errors.New("channel not OPEN or PENDING_CLOSED")
+	}
+	if len(ev.Signatures) != 2 {
+		return errors.New("wrong number of signatures")
+	}
 	if !ed25519.Verify(sliceTo32Byte(ch.Counterparty.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[swap[ch.Me]])) {
 		return errors.New("counterparty signature not valid")
 	}
-
 	if utx.ChannelId != ch.OpeningTx.ChannelId {
 		return errors.New("channel id incorrect")
 	}
-
 	if !(utx.SequenceNumber > ch.HighestSeq()) {
 		return errors.New("sequence number too low")
 	}
@@ -270,48 +286,22 @@ func (ch *Channel) CheckUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
 	return nil
 }
 
-// func (ch *Channel) ConfirmUpdateTx() (*wire.Envelope, error) {
-// 	if ch.Phase != OPEN {
-// 		return nil, errors.New("channel must be open")
-// 	}
-
-// 	if ch.TheirProposedUpdateTxEnvelope == nil {
-// 		return nil, errors.New("no proposed update tx")
-// 	}
-
-// 	ev := &wire.Envelope{}
-
-// 	utx := ch.TheirProposedUpdateTx
-// 	ev = ch.TheirProposedUpdateTxEnvelope
-
-// 	ev.Signatures = append(
-// 		ev.Signatures,
-// 		[][]byte{ed25519.Sign(sliceTo64Byte(ch.Account.Privkey), ev.Payload)[:]}...,
-// 	)
-
-// 	ch.LastFullUpdateTx = utx
-// 	ch.LastFullUpdateTxEnvelope = ev
-
-// 	return ev, nil
-// }
-
 func (ch *Channel) CheckFinalUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) (*wire.Envelope, error) {
-	if !(ch.Phase == PENDING_CLOSED || ch.Phase == OPEN) {
-		return nil, errors.New("channel must be open or pending closed")
+	if !(ch.Phase == OPEN || ch.Phase == PENDING_CLOSED) {
+		return nil, errors.New("channel not OPEN or PENDING_CLOSED")
 	}
 	if len(ev.Signatures) != 3 {
-		return nil, errors.New("envelope must have 3 signatures")
+		return nil, errors.New("wrong number of signatures")
 	}
 	if !ed25519.Verify(sliceTo32Byte(ch.Account.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[ch.Me])) {
-		return nil, errors.New("my account signature invalid")
+		return nil, errors.New("my account signature not valid")
 	}
 	if !ed25519.Verify(sliceTo32Byte(ch.Counterparty.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[swap[ch.Me]])) {
-		return nil, errors.New("counterparty signature invalid")
+		return nil, errors.New("counterparty signature not valid")
 	}
 	if !ed25519.Verify(sliceTo32Byte(ch.Judge.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[2])) {
-		return nil, errors.New("judge signature invalid")
+		return nil, errors.New("judge signature not valid")
 	}
-	fmt.Println("shit")
 
 	if ch.LastFullUpdateTx != nil {
 		if ch.Phase == PENDING_CLOSED {
@@ -328,15 +318,33 @@ func (ch *Channel) CheckFinalUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) (*w
 	return nil, nil
 }
 
-// AddFollowOnTx verifies a FollowOnTx's signature and adds it to the Channel's
-// FollowOnTxs array.
-func (ch *Channel) AddFollowOnTx(ev *wire.Envelope) error {
-	if ch.Phase != PENDING_CLOSED {
-		return errors.New("channel must be pending closed")
+func (ch *Channel) NewFollowOnTx(state []byte) *wire.FollowOnTx {
+	return &wire.FollowOnTx{
+		ChannelId: ch.ChannelId,
+		State:     state,
+	}
+}
+
+func SerializeFollowOnTx(ftx *wire.FollowOnTx) (*wire.Envelope, error) {
+	data, err := proto.Marshal(ftx)
+	if err != nil {
+		return nil, err
 	}
 
+	return &wire.Envelope{
+		Payload: data,
+	}, nil
+}
+
+func (ch *Channel) AddFollowOnTx(ev *wire.Envelope) error {
+	if !(ch.Phase == OPEN || ch.Phase == PENDING_CLOSED) {
+		return errors.New("channel not OPEN or PENDING_CLOSED")
+	}
+	if len(ev.Signatures) != 1 {
+		return errors.New("wrong number of signatures")
+	}
 	if !ed25519.Verify(sliceTo32Byte(ch.Counterparty.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
-		return errors.New("signature invalid")
+		return errors.New("signature not valid")
 	}
 
 	ch.FollowOnTxs = append(ch.FollowOnTxs, ev)
