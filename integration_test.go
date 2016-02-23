@@ -1,7 +1,6 @@
 package wallet
 
 import (
-	"errors"
 	"testing"
 
 	j "github.com/jtremback/usc-core/judge"
@@ -73,7 +72,7 @@ func Test(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ev, err := c1_Account.SerializeOpeningTx(otx)
+	ev, err := c.SerializeOpeningTx(otx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +83,9 @@ func Test(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	// --- Send to second party ---
+
 	err = c2_Account.CheckOpeningTx(ev, c2_Counterparty)
 	if err != nil {
 		t.Fatal(err)
@@ -107,67 +108,69 @@ func Test(t *testing.T) {
 
 	// --- Send back to accounts ---
 
-	ch1.Confirm(jch.OpeningTxEnvelope, jch.OpeningTx)
+	ch1.Open(jch.OpeningTxEnvelope, jch.OpeningTx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	ch2.Confirm(jch.OpeningTxEnvelope, jch.OpeningTx)
+	ch2.Open(jch.OpeningTxEnvelope, jch.OpeningTx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Make update tx
+	// --- Make update tx
+
 	utx := ch1.NewUpdateTx([]byte{164, 179}, false)
 
-	ev, err = ch1.SerializeUpdateTx(utx)
+	utxEv, err := c.SerializeUpdateTx(utx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	ch1.SignEnvelope(ev)
-	ch1.LastFullUpdateTx = utx
-	ch1.LastFullUpdateTxEnvelope = ev
+	ch1.SignUpdateTx(utxEv, utx)
 
 	// --- Send to second party ---
 
-	err = ch2.CheckUpdateTx(ev, utx)
+	err = ch2.CheckUpdateTx(utxEv, utx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	ch2.SignEnvelope(ev)
-	ch2.LastFullUpdateTx = utx
-	ch2.LastFullUpdateTxEnvelope = ev
+	ch2.CosignUpdateTx(utxEv, utx)
+
+	// --- Make follow on tx
+
+	ftx := ch2.NewFollowOnTx([]byte{0, 4})
+
+	ftxEv, err := c.SerializeFollowOnTx(ftx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ch2.AddFollowOnTx(ftxEv)
 
 	// --- Send to judge ---
 
-	err = jch.AddUpdateTx(ev, utx)
+	err = jch.AddUpdateTx(utxEv, utx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = jch.ConfirmUpdateTx(ev, utx)
+	err = jch.ConfirmUpdateTx(utxEv, utx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	j_judge.AppendSignature(ev)
+	j_judge.AppendSignature(utxEv)
 
 	// --- Back to participants ---
-	realEv, err := ch1.CheckFinalUpdateTx(ev, utx)
+	_, err = ch1.CheckFinalUpdateTx(utxEv, utx)
 	if err != nil {
 		t.Fatal(err)
-	}
-	if realEv != nil {
-		t.Fatal(errors.New("update tx with higher sequence number exists"))
 	}
 
-	realEv, err = ch1.CheckFinalUpdateTx(ev, utx)
+	_, err = ch2.CheckFinalUpdateTx(utxEv, utx)
 	if err != nil {
 		t.Fatal(err)
-	}
-	if realEv != nil {
-		t.Fatal(errors.New("update tx with higher sequence number exists"))
 	}
 }
 
