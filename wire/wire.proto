@@ -28,3 +28,7 @@ message Envelope {
   bytes payload = 1;
   repeated bytes signatures = 2;
 }
+
+message Parcel {
+  repeated Envelope envelopes = 1;
+}
