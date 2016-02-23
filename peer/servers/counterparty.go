@@ -6,8 +6,8 @@ import (
 	"net/http"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/jtremback/usc-core/wire"
-	"github.com/jtremback/usc-peer/logic"
+	"github.com/jtremback/usc/core/wire"
+	"github.com/jtremback/usc/peer/logic"
 )
 
 type CounterpartyHTTP struct {

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/agl/ed25519"
-	"github.com/jtremback/usc-core/wire"
+	"github.com/jtremback/usc/core/wire"
 )
 
 // Phases of a Tx

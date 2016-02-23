@@ -4,8 +4,8 @@ import (
 	"errors"
 
 	"github.com/boltdb/bolt"
-	core "github.com/jtremback/usc-core/judge"
-	"github.com/jtremback/usc-judge/access"
+	core "github.com/jtremback/usc/core/judge"
+	"github.com/jtremback/usc/judge/access"
 )
 
 type CallerAPI struct {

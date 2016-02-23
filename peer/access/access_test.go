@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/boltdb/bolt"
-	core "github.com/jtremback/usc-core/peer"
-	"github.com/jtremback/usc-core/wire"
+	core "github.com/jtremback/usc/core/peer"
+	"github.com/jtremback/usc/core/wire"
 )
 
 func TestSetJudge(t *testing.T) {

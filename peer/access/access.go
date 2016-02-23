@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	"github.com/boltdb/bolt"
-	core "github.com/jtremback/usc-core/peer"
+	core "github.com/jtremback/usc/core/peer"
 	"github.com/tv42/compound"
 )
 

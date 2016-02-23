@@ -3,8 +3,8 @@ package wallet
 import (
 	"testing"
 
-	j "github.com/jtremback/usc-core/judge"
-	c "github.com/jtremback/usc-core/peer"
+	j "github.com/jtremback/usc/core/judge"
+	c "github.com/jtremback/usc/core/peer"
 )
 
 // Judge's computer

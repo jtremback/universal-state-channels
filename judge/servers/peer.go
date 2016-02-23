@@ -6,8 +6,8 @@ import (
 	"net/http"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/jtremback/usc-core/wire"
-	"github.com/jtremback/usc-judge/logic"
+	"github.com/jtremback/usc/core/wire"
+	"github.com/jtremback/usc/judge/logic"
 )
 
 type PeerHTTP struct {

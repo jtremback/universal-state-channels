@@ -8,7 +8,7 @@ import (
 
 	"github.com/agl/ed25519"
 	"github.com/golang/protobuf/proto"
-	"github.com/jtremback/usc-core/wire"
+	"github.com/jtremback/usc/core/wire"
 )
 
 // Phases of a Tx

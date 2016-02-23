@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/jtremback/usc-judge/logic"
+	"github.com/jtremback/usc/judge/logic"
 )
 
 type CallerHTTP struct {

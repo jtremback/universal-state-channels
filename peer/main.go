@@ -5,9 +5,9 @@ import (
 	"net/http"
 
 	"github.com/boltdb/bolt"
-	"github.com/jtremback/usc-peer/clients"
-	"github.com/jtremback/usc-peer/logic"
-	"github.com/jtremback/usc-peer/servers"
+	"github.com/jtremback/usc/peer/clients"
+	"github.com/jtremback/usc/peer/logic"
+	"github.com/jtremback/usc/peer/servers"
 )
 
 func main() {

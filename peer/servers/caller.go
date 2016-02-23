@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/jtremback/usc-peer/logic"
+	"github.com/jtremback/usc/peer/logic"
 )
 
 type Caller struct {

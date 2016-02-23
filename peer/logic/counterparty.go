@@ -5,9 +5,9 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/golang/protobuf/proto"
-	core "github.com/jtremback/usc-core/peer"
-	"github.com/jtremback/usc-core/wire"
-	"github.com/jtremback/usc-peer/access"
+	core "github.com/jtremback/usc/core/peer"
+	"github.com/jtremback/usc/core/wire"
+	"github.com/jtremback/usc/peer/access"
 )
 
 type CounterpartyAPI struct {

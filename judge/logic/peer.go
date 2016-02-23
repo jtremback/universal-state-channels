@@ -5,8 +5,8 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/golang/protobuf/proto"
-	"github.com/jtremback/usc-core/wire"
-	"github.com/jtremback/usc-judge/access"
+	"github.com/jtremback/usc/core/wire"
+	"github.com/jtremback/usc/judge/access"
 )
 
 type PeerAPI struct {
