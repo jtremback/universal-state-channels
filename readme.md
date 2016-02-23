@@ -29,7 +29,7 @@ if the channel is PENDING_OPEN:
 
 - check the signatures
 - check that there is not already a channel with that ID
-- make channel in PENDING_OPEN from opening tx and save
+- make channel in PENDING_OPEN phase with opening tx and save
 
 
 *judge/caller/confirm_channel* - When a judge wants to confirm a proposed channel:
