@@ -17,15 +17,21 @@ import (
 // Verified
 
 func sliceTo64Byte(slice []byte) *[64]byte {
-	var array [64]byte
-	copy(array[:], slice[:64])
-	return &array
+	if len(slice) == 64 {
+		var array [64]byte
+		copy(array[:], slice[:64])
+		return &array
+	}
+	return &[64]byte{}
 }
 
 func sliceTo32Byte(slice []byte) *[32]byte {
-	var array [32]byte
-	copy(array[:], slice[:32])
-	return &array
+	if len(slice) == 32 {
+		var array [32]byte
+		copy(array[:], slice[:32])
+		return &array
+	}
+	return &[32]byte{}
 }
 
 func randomBytes(c uint) ([]byte, error) {
@@ -96,14 +102,20 @@ func NewJudge(name string, address string) (*Judge, error) {
 }
 
 func (jd *Judge) AddChannel(ev *wire.Envelope, otx *wire.OpeningTx, acct0 *Account, acct1 *Account) (*Channel, error) {
+	if len(ev.Signatures) != 2 {
+		return nil, errors.New("wrong number of signatures")
+	}
+	if len(otx.Pubkeys) != 2 {
+		return nil, errors.New("wrong number of public keys")
+	}
 	if bytes.Compare(acct0.Judge.Pubkey, acct1.Judge.Pubkey) != 0 {
 		return nil, errors.New("accounts do not have matching judges")
 	}
 	if !ed25519.Verify(sliceTo32Byte(otx.Pubkeys[0]), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
-		return nil, errors.New("signature 0 invalid")
+		return nil, errors.New("signature 0 not valid")
 	}
 	if !ed25519.Verify(sliceTo32Byte(otx.Pubkeys[1]), ev.Payload, sliceTo64Byte(ev.Signatures[1])) {
-		return nil, errors.New("signature 1 invalid")
+		return nil, errors.New("signature 1 not valid")
 	}
 
 	ch := &Channel{
@@ -129,6 +141,7 @@ func (ch *Channel) Confirm() {
 
 func (ch *Channel) HighestSeq() uint32 {
 	var num uint32
+	num = 0
 	if ch.ProposedUpdateTx != nil {
 		if ch.ProposedUpdateTx.SequenceNumber > num {
 			num = ch.ProposedUpdateTx.SequenceNumber
@@ -145,15 +158,21 @@ func (ch *Channel) HighestSeq() uint32 {
 }
 
 func (ch *Channel) AddUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
+	if !(ch.Phase == OPEN || ch.Phase == PENDING_CLOSED) {
+		return errors.New("channel not OPEN or PENDING_CLOSED")
+	}
+	if len(ev.Signatures) != 2 {
+		return errors.New("wrong number of signatures")
+	}
 	if !ed25519.Verify(sliceTo32Byte(ch.OpeningTx.Pubkeys[0]), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
-		return errors.New("signature 0 invalid")
+		return errors.New("signature 0 not valid")
 	}
 	if !ed25519.Verify(sliceTo32Byte(ch.OpeningTx.Pubkeys[1]), ev.Payload, sliceTo64Byte(ev.Signatures[1])) {
-		return errors.New("signature 1 invalid")
+		return errors.New("signature 1 not valid")
 	}
 
 	if utx.ChannelId != ch.OpeningTx.ChannelId {
-		return errors.New("ChannelId does not match")
+		return errors.New("wrong channel id")
 	}
 
 	if ch.ProposedUpdateTx != nil {
@@ -174,6 +193,9 @@ func (ch *Channel) AddUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
 }
 
 func (ch *Channel) ConfirmUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
+	if !(ch.Phase == OPEN || ch.Phase == PENDING_CLOSED) {
+		return errors.New("channel not OPEN or PENDING_CLOSED")
+	}
 	ch.Phase = PENDING_CLOSED
 	ch.ProposedUpdateTx = utx
 	ch.ProposedUpdateTxEnvelope = ev
@@ -183,12 +205,14 @@ func (ch *Channel) ConfirmUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error 
 
 func (ch *Channel) AddCancellationTx(ev *wire.Envelope) error {
 	if ch.Phase != OPEN {
-		return errors.New("channel must be open")
+		return errors.New("channel not OPEN")
 	}
-
+	if len(ev.Signatures) != 1 {
+		return errors.New("wrong number of signatures")
+	}
 	if !ed25519.Verify(sliceTo32Byte(ch.Accounts[0].Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[0])) ||
 		!ed25519.Verify(sliceTo32Byte(ch.Accounts[1].Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
-		return errors.New("signature invalid")
+		return errors.New("signature not valid")
 	}
 
 	if ch.Phase == OPEN {
@@ -206,13 +230,15 @@ func (ch *Channel) ConfirmClose() {
 // AddFollowOnTx verifies a FollowOnTx's signature and adds it to the Channel's
 // FollowOnTxs array.
 func (ch *Channel) AddFollowOnTx(ev *wire.Envelope) error {
-	if ch.Phase != PENDING_CLOSED {
-		return errors.New("channel must be pending closed")
+	if !(ch.Phase == OPEN || ch.Phase == PENDING_CLOSED) {
+		return errors.New("channel not OPEN or PENDING_CLOSED")
 	}
-
+	if len(ev.Signatures) != 1 {
+		return errors.New("wrong number of signatures")
+	}
 	if !ed25519.Verify(sliceTo32Byte(ch.Accounts[0].Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[0])) ||
 		!ed25519.Verify(sliceTo32Byte(ch.Accounts[1].Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
-		return errors.New("signature invalid")
+		return errors.New("signature not valid")
 	}
 
 	ch.FollowOnTxs = append(ch.FollowOnTxs, ev)
