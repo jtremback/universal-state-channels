@@ -250,7 +250,7 @@ func SerializeUpdateTx(utx *wire.UpdateTx) (*wire.Envelope, error) {
 	return &ev, nil
 }
 
-func (ch *Channel) SignUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) {
+func (ch *Channel) SignProposedUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) {
 	ev.Signatures[ch.Me] = ed25519.Sign(sliceTo64Byte(ch.Account.Privkey), ev.Payload)[:]
 	ch.MyProposedUpdateTx = utx
 	ch.MyProposedUpdateTxEnvelope = ev
@@ -266,7 +266,7 @@ func (ch *Channel) CosignProposedUpdateTx() *wire.Envelope {
 	return ev
 }
 
-func (ch *Channel) CheckUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
+func (ch *Channel) AddUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
 	if !(ch.Phase == OPEN || ch.Phase == PENDING_CLOSED) {
 		return errors.New("channel not OPEN or PENDING_CLOSED")
 	}
@@ -283,10 +283,13 @@ func (ch *Channel) CheckUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
 		return errors.New("sequence number too low")
 	}
 
+	ch.TheirProposedUpdateTx = utx
+	ch.TheirProposedUpdateTxEnvelope = ev
+
 	return nil
 }
 
-func (ch *Channel) CheckFinalUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) (*wire.Envelope, error) {
+func (ch *Channel) AddFinalUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) (*wire.Envelope, error) {
 	if !(ch.Phase == OPEN || ch.Phase == PENDING_CLOSED) {
 		return nil, errors.New("channel not OPEN or PENDING_CLOSED")
 	}
@@ -303,17 +306,15 @@ func (ch *Channel) CheckFinalUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) (*w
 		return nil, errors.New("judge signature not valid")
 	}
 
-	if ch.LastFullUpdateTx != nil {
-		if ch.Phase == PENDING_CLOSED {
-			if ch.LastFullUpdateTx.SequenceNumber > utx.SequenceNumber {
-				return ch.LastFullUpdateTxEnvelope, nil
-			}
-		}
-	}
-
 	ch.Phase = PENDING_CLOSED
 	ch.LastFullUpdateTx = utx
 	ch.LastFullUpdateTxEnvelope = ev
+
+	if ch.LastFullUpdateTx != nil {
+		if ch.LastFullUpdateTx.SequenceNumber > utx.SequenceNumber {
+			return ch.LastFullUpdateTxEnvelope, nil
+		}
+	}
 
 	return nil, nil
 }

@@ -35,8 +35,8 @@ if the channel is PENDING_OPEN:
 *judge/caller/confirm_channel* - When a judge wants to confirm a proposed channel:
 
 if the channel is PENDING_OPEN:
-  - sign opening tx
   - change channel phase to OPEN
+  - sign opening tx
 
 
 *peer/caller/open_channel* - When a peer finds a fully-signed opening tx from the judge:

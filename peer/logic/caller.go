@@ -13,26 +13,28 @@ import (
 
 type CallerAPI struct {
 	DB             *bolt.DB
-	CounterpartyCl *clients.Counterparty
-	JudgeCl        *clients.Judge
+	CounterpartyCl *clients.CounterpartyHTTP
+	JudgeCl        *clients.JudgeHTTP
 }
 
-func (a *CallerAPI) ProposeChannel(state []byte, mpk []byte, tpk []byte, hold uint32) error {
+// ProposeChannel is called to propose a new channel. It creates and signs an
+// OpeningTx, sends it to the Counterparty and saves it in a new Channel.
+func (a *CallerAPI) ProposeChannel(state []byte, myPubkey []byte, theirPubkey []byte, holdPeriod uint32) error {
 	var err error
 	cpt := &core.Counterparty{}
 	acct := &core.Account{}
 	err = a.DB.Update(func(tx *bolt.Tx) error {
-		acct, err = access.GetAccount(tx, mpk)
+		acct, err = access.GetAccount(tx, myPubkey)
 		if err != nil {
 			return err
 		}
 
-		cpt, err = access.GetCounterparty(tx, tpk)
+		cpt, err = access.GetCounterparty(tx, theirPubkey)
 		if err != nil {
 			return err
 		}
 
-		otx, err := acct.NewOpeningTx(cpt, state, hold)
+		otx, err := acct.NewOpeningTx(cpt, state, holdPeriod)
 		if err != nil {
 			return errors.New("server error")
 		}
@@ -49,7 +51,7 @@ func (a *CallerAPI) ProposeChannel(state []byte, mpk []byte, tpk []byte, hold ui
 			return errors.New("server error")
 		}
 
-		err = a.CounterpartyCl.Send(ev, cpt.Address)
+		err = a.CounterpartyCl.AddChannel(ev, cpt.Address)
 		if err != nil {
 			return err
 		}
@@ -68,11 +70,14 @@ func (a *CallerAPI) ProposeChannel(state []byte, mpk []byte, tpk []byte, hold ui
 	return nil
 }
 
-func (a *CallerAPI) ConfirmChannel(chID string) error {
+// ConfirmChannel is called on Channels which are in phase PENDING_OPEN. It signs
+// the Channel's OpeningTx, sends it to the Judge, and puts the Channel into
+// phase OPEN.
+func (a *CallerAPI) ConfirmChannel(channelID string) error {
 	var err error
 	return a.DB.Update(func(tx *bolt.Tx) error {
 		ch := &core.Channel{}
-		ch, err = access.GetChannel(tx, chID)
+		ch, err = access.GetChannel(tx, channelID)
 		if err != nil {
 			return err
 		}
@@ -84,7 +89,7 @@ func (a *CallerAPI) ConfirmChannel(chID string) error {
 			return errors.New("database error")
 		}
 
-		err = a.JudgeCl.Send(ch.OpeningTxEnvelope, ch.Judge.Address)
+		err = a.JudgeCl.AddChannel(ch.OpeningTxEnvelope, ch.Judge.Address)
 		if err != nil {
 			return err
 		}
@@ -93,6 +98,9 @@ func (a *CallerAPI) ConfirmChannel(chID string) error {
 	})
 }
 
+// OpenChannel is called on Channels which are in phase PENDING_OPEN. It checks
+// an OpeningTx signed by the Judge, and if everything is correct puts the Channel
+// into phase OPEN.
 func (a *CallerAPI) OpenChannel(ev *wire.Envelope) error {
 	var err error
 	return a.DB.Update(func(tx *bolt.Tx) error {
@@ -122,11 +130,13 @@ func (a *CallerAPI) OpenChannel(ev *wire.Envelope) error {
 	})
 }
 
-func (a *CallerAPI) SendUpdateTx(state []byte, chID string, fast bool) error {
+// NewUpdateTx is called on Channels which are in phase OPEN. It makes a new UpdateTx,
+// signs it, saves it as MyProposedUpdateTx, and sends it to the Counterparty.
+func (a *CallerAPI) NewUpdateTx(state []byte, channelID string, fast bool) error {
 	var err error
 	return a.DB.Update(func(tx *bolt.Tx) error {
 		ch := &core.Channel{}
-		ch, err = access.GetChannel(tx, chID)
+		ch, err = access.GetChannel(tx, channelID)
 		if err != nil {
 			return err
 		}
@@ -138,7 +148,9 @@ func (a *CallerAPI) SendUpdateTx(state []byte, chID string, fast bool) error {
 			return errors.New("server error")
 		}
 
-		err = a.CounterpartyCl.Send(ev, ch.Counterparty.Address)
+		ch.SignProposedUpdateTx(ev, utx)
+
+		err = a.CounterpartyCl.AddChannel(ev, ch.Counterparty.Address)
 		if err != nil {
 			return err
 		}
@@ -152,16 +164,18 @@ func (a *CallerAPI) SendUpdateTx(state []byte, chID string, fast bool) error {
 	})
 }
 
-func (a *CallerAPI) ConfirmUpdateTx(chID string) error {
+// ConfirmUpdateTx cosigns the Channel's TheirProposedUpdateTx, saves it to
+// LastFullUpdateTx, and sends it to the Counterparty.
+func (a *CallerAPI) ConfirmUpdateTx(channelID string) error {
 	return a.DB.Update(func(tx *bolt.Tx) error {
-		ch, err := access.GetChannel(tx, chID)
+		ch, err := access.GetChannel(tx, channelID)
 		if err != nil {
 			return err
 		}
 
 		ev := ch.CosignProposedUpdateTx()
 
-		err = a.CounterpartyCl.Send(ev, ch.Counterparty.Address)
+		err = a.CounterpartyCl.AddUpdateTx(ev, ch.Counterparty.Address)
 		if err != nil {
 			return err
 		}
@@ -175,25 +189,35 @@ func (a *CallerAPI) ConfirmUpdateTx(chID string) error {
 	})
 }
 
-func (a *CallerAPI) CheckFinalUpdateTx(ev *wire.Envelope) error {
-	var err error
+// CheckFinalUpdateTx checks with the Judge to see if the Counterparty has posted
+// an UpdateTx. If the UpdateTx from the Judge has a lower SequenceNumber than
+// LastFullUpdateTx, we send LastFullUpdateTx to the Judge.
+func (a *CallerAPI) CheckFinalUpdateTx(channelID string) error {
+	// var err error
 	return a.DB.Update(func(tx *bolt.Tx) error {
+		ch, err := access.GetChannel(tx, channelID)
+		if err != nil {
+			return err
+		}
+
+		ev, err := a.JudgeCl.GetFinalUpdateTx(ch.Judge.Address)
+		if err != nil {
+			return err
+		}
+
 		utx := &wire.UpdateTx{}
 		err = proto.Unmarshal(ev.Payload, utx)
 		if err != nil {
 			return err
 		}
-		ch, err := access.GetChannel(tx, utx.ChannelId)
+
+		newerUpdateTx, err := ch.AddFinalUpdateTx(ev, utx)
 		if err != nil {
 			return err
 		}
 
-		ev2, err := ch.CheckFinalUpdateTx(ev, utx)
-		if err != nil {
-			return err
-		}
-		if ev2 != nil {
-			err = a.JudgeCl.Send(ev2, ch.Judge.Address)
+		if newerUpdateTx != nil {
+			err = a.JudgeCl.AddUpdateTx(newerUpdateTx, ch.Judge.Address)
 			if err != nil {
 				return err
 			}
@@ -206,16 +230,4 @@ func (a *CallerAPI) CheckFinalUpdateTx(ev *wire.Envelope) error {
 
 		return nil
 	})
-}
-
-func (a *CallerAPI) AddJudge() {
-
-}
-
-func (a *CallerAPI) NewAccount() {
-
-}
-
-func (a *CallerAPI) AddCounterparty() {
-
 }

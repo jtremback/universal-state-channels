@@ -3,6 +3,7 @@ package clients
 import (
 	"bytes"
 	"errors"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/golang/protobuf/proto"
@@ -25,6 +26,36 @@ func (a *JudgeHTTP) SendEnvelope(ev *wire.Envelope, address string) error {
 	}
 
 	return nil
+}
+
+func (a *JudgeHTTP) GetEnvelope(address string) (*wire.Envelope, error) {
+	resp, err := http.Post(address, "application/octet-stream", bytes.NewReader([]byte(address)))
+	if err != nil {
+		return nil, errors.New("network error")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return nil, errors.New("counterparty error")
+	}
+
+	data, err := ioutil.ReadAll(resp.Body)
+
+	ev := &wire.Envelope{}
+	err = proto.Unmarshal(data, ev)
+	if err != nil {
+		return nil, errors.New("error parsing envelope")
+	}
+
+	return ev, nil
+}
+
+func (a *JudgeHTTP) GetFinalUpdateTx(address string) (*wire.Envelope, error) {
+	ev, err := a.GetEnvelope(address + "/get_final_update_tx")
+	if err != nil {
+		return nil, errors.New("can't reach judge")
+	}
+	return ev, nil
 }
 
 func (a *JudgeHTTP) AddChannel(ev *wire.Envelope, address string) error {

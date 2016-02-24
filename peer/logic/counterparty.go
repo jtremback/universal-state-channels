@@ -80,7 +80,7 @@ func (a *CounterpartyAPI) AddUpdateTx(ev *wire.Envelope) error {
 			return err
 		}
 
-		err = ch.CheckUpdateTx(ev, utx)
+		err = ch.AddUpdateTx(ev, utx)
 		if err != nil {
 			return err
 		}
