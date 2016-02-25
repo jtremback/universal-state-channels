@@ -20,7 +20,7 @@
 
 *peer/caller/confirm_channel* - When a peer wants to confirm a proposed channel:
 
-if the channel is PENDING_OPEN:
+- if the channel is PENDING_OPEN:
   - sign the opening tx
   - send it to the judge
 
@@ -34,14 +34,14 @@ if the channel is PENDING_OPEN:
 
 *judge/caller/confirm_channel* - When a judge wants to confirm a proposed channel:
 
-if the channel is PENDING_OPEN:
+- if the channel is PENDING_OPEN:
   - change channel phase to OPEN
   - sign opening tx
 
 
 *peer/caller/open_channel* - When a peer finds a fully-signed opening tx from the judge:
 
-if the channel is PENDING_OPEN:
+- if the channel is PENDING_OPEN:
   - check signatures of account, counterparty, and judge
   - change channel phase to OPEN
 
@@ -51,7 +51,7 @@ if the channel is PENDING_OPEN:
 
 *peer/caller/new_update_tx* - When a peer wants to update a channel:
 
-if the channel is OPEN or PENDING_CLOSED
+- if the channel is OPEN or PENDING_CLOSED
   - passed in state data
   - set sequence number to sequence number to (highest sequence number of MyProposedUpdateTx and TheirProposedUpdateTx) + 1
   - sign update tx
@@ -60,7 +60,7 @@ if the channel is OPEN or PENDING_CLOSED
 
 *peer/counterparty/add_update_tx* - When the counterparty receives an update tx:
 
-if the channel is OPEN or PENDING_CLOSED
+- if the channel is OPEN or PENDING_CLOSED
   - check that it is signed by counterparty
   - check that the sequence number is higher than (highest sequence number of MyProposedUpdateTx and TheirProposedUpdateTx)
   - save update as TheirProposedUpdateTx
@@ -68,7 +68,7 @@ if the channel is OPEN or PENDING_CLOSED
 
 *peer/caller/confirm_update_tx* - When a peer wants to approve an update tx:
 
-if the channel is OPEN or PENDING_CLOSED
+- if the channel is OPEN or PENDING_CLOSED
   - check if channel has an update tx to be approved
   - sign it and save it in LastFullUpdateTx
   - send it to the counterparty
@@ -78,54 +78,54 @@ if the channel is OPEN or PENDING_CLOSED
 
 *peer/caller/send_last_full_update_tx* -
 
-if the channel is OPEN or PENDING CLOSED:
+- if the channel is OPEN or PENDING CLOSED:
   - send the LastFullUpdateTx to the judge.
 
 
 *judge/peer/add_cancellation_tx* - When a judge receives a cancellation tx:
 
-if the channel is OPEN:
+- if the channel is OPEN:
   - check that it is signed by one of the channel's accounts
   - place channel in PENDING_CLOSE
 
 
 *judge/peer/add_update_tx* - When a judge receives a LastFullUpdateTx:
 
-if the channel is OPEN:
+ - if the channel is OPEN:
   - check that it is signed by both of the channel's accounts
   - save it and the closing time with the channel
 
-if the channel is PENDING_CLOSED:
+- if the channel is PENDING_CLOSED:
   - check that the LastFullUpdateTx is signed by both of the channel's accounts
 
-  if the channel does not have a LastFullUpdateTx or if peer's LastFullUpdateTx SequenceNumber is equal to or higher than the judge's own:
+  - if the channel does not have a LastFullUpdateTx or if peer's LastFullUpdateTx SequenceNumber is equal to or higher than the judge's own:
     - save the peer's LastFullUpdateTx with the channel, overwriting any existing LastFullUpdateTx
 
 
 *peer/caller/new_follow_on_tx* - When a peer wants to submit a follow-on tx:
 
-if the channel is OPEN:
+- if the channel is OPEN:
   - add to the channel.
 
-if the channel is PENDING_CLOSED:
+- if the channel is PENDING_CLOSED:
   - sign it and send it to the judge.
 
 
 *judge/peer/add_follow_on_tx* - When a judge receives a follow-on tx:
 
-if the channel is OPEN or PENDING_CLOSED:
+- if the channel is OPEN or PENDING_CLOSED:
   - check that it is signed by one of the channel's accounts
   - save it in the follow on txs array
 
 
 *peer/caller/check_final_update_tx* - When a peer sees that a judge has posted a last LastFullUpdateTx:
 
-if channel is OPEN or PENDING_CLOSED:
+- if channel is OPEN or PENDING_CLOSED:
   - check that the last LastFullUpdateTx is signed by the peer, the counterparty, and the judge.
 
-  if judge's last LastFullUpdateTx SequenceNumber is equal to or higher than the peer's own:
+  - if judge's last LastFullUpdateTx SequenceNumber is equal to or higher than the peer's own:
     - place channel into PENDING_CLOSED if it isn't already
-  else:
+  - else:
     - send peer's last LastFullUpdateTx to judge
 
 
