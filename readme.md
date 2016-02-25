@@ -76,7 +76,7 @@
 
 ## Closing
 
-*peer/caller/send_last_full_update_tx* -
+*peer/caller/close_channel* -
 
 - if the channel is OPEN or PENDING CLOSED:
   - send the LastFullUpdateTx to the judge.
