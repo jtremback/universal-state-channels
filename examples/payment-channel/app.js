@@ -26,7 +26,6 @@ var commands = {
 
 
 
-
   // Make a new channel
   newChannel({
     channelId,
