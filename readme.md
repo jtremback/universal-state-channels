@@ -1,134 +1,182 @@
-# Lifecycle of a channel
+# Universal State Channels
 
-## Opening
+Universal State Channels (or USC) is a platform for building state channels using centralized or decentralized judges.
 
+*What is a state channel?* A state channel is a way for two or more parties to maintain a state (any sequence of bytes) between them, being able to update it without the involvement of any third parties.
 
-*peer/caller/propose_channel* - When a peer wants to start a channel:
+*What are state channels used for?* The most well-known use of state channels is in payment channels, a technique which allows two parties to pay each other by adjusting the balance of an escrow account or a special blockchain transaction. Payment channels can also be linked together, allowing payments to be securely transmitted across multiple untrusted parties. Participants in the channel exchanged signed state update transactions, and can close the channel at any time with confidence that the last valid update transaction will be honored. Because only the last update transaction is sent to the judge, they can be used to create very scalable systems. [Here's](http://www.jeffcoleman.ca/state-channels/) an easy explanation of state channels.
 
-- create and sign opening tx
-- send it to counterparty
-- make a new channel in a PENDING_OPEN phase
+Payment channels, and any other state chanel, can be implemented easily on top of USC with a minimum of effort. Here's a 200 line Javascript example app implementing a simple payment channel.
 
+USC Peer handles communication between the participants in the channel, and cryptographically checks all transactions for validity. The developer writing the channel's business logic interacts with a friendly HTTP API over localhost. No specialized knowledge of cryptography is required.
 
-*peer/counterparty/add_channel* - When the counterparty receives the opening tx:
+USC Judge is run by a trusted third party and checks the validity of a state channel's final update transaction. It also has an easy API, which the developer can use to write the business logic which reacts to the state contained in the final update transaction. For example, in a payment channel, the USC Judge could be run by a bank and permanently transfer money when the channel closed.
 
-- check that there is not already a channel with that ID.
-- verify the signature
-- verify that the account and the counterparty have the same judge
-- make a new channel in a PENDING_OPEN phase
+USC will also have blockchain adapters, which run alongside the USC Peer. Blockchain adapters relay transactions to a judge contract on a blockchain. This allows the trusted third party to be replaced by trust in a programmable blockchain, such as Ethereum, Tendermint, or Hyperledger.
 
+## HTTP Peer API
 
-*peer/caller/confirm_channel* - When a peer wants to confirm a proposed channel:
+### Accounts
 
-- if the channel is PENDING_OPEN:
-  - sign the opening tx
-  - send it to the judge
+Accounts correspond to identities known by a third party judge or a blockchain. Accounts embed the information for their judge.
 
+#### List All Accounts
 
-*judge/peer/add_channel* - When a judge receives an opening tx:
+`accounts` returns a list of all accounts stored in the USC Peer.
 
-- check the signatures
-- check that there is not already a channel with that ID
-- make channel in PENDING_OPEN phase with opening tx and save
+GET `https://localhost:4456/accounts`
 
+*Example response:*
 
-*judge/caller/confirm_channel* - When a judge wants to confirm a proposed channel:
+```
+[
+  {
+    "name": "AC7739 at SFFCU",
+    "pubkey": "R5lVVs82M80i5OpR369StJqaHS61Ld-PzTCfS-0zyAA=",
+    "privkey": "k4NkO3BNxNN8qsdPvsKv9AEJMP_IqIqluy77HLcN1gVHmVVWzzYzzSLk6lHfr1K0mpodLrUt34_NMJ9L7TPIAA==",
+    "judge": {
+      "name": "San Francisco Federal Credit Union",
+      "pubkey": "xcYNnNW1oA9pB0LeQg_UCKw3FC8itnVq1csGrHdCV6o=",
+      "address": "https://sanfranciscofcu.com/channels/"
+    }
+  },
+  ...
+]
+```
 
-- if the channel is PENDING_OPEN:
-  - change channel phase to OPEN
-  - sign opening tx
+#### Accounts by Pubkey
 
+`accounts_by_pubkey` returns account with the specified pubkey.
 
-*peer/caller/open_channel* - When a peer finds a fully-signed opening tx from the judge:
+*Example:*
 
-- if the channel is PENDING_OPEN:
-  - check signatures of account, counterparty, and judge
-  - change channel phase to OPEN
+GET `https://localhost:4456/accounts_by_id/R5lVVs82M80i5OpR369StJqaHS61Ld-PzTCfS-0zyAA=`
 
-
-## Updating
-
-
-*peer/caller/new_update_tx* - When a peer wants to update a channel:
-
-- if the channel is OPEN or PENDING_CLOSED
-  - passed in state data
-  - set sequence number to sequence number to (highest sequence number of MyProposedUpdateTx and TheirProposedUpdateTx) + 1
-  - sign update tx
-  - send to counterparty
+Response: An account, see above.
 
 
-*peer/counterparty/add_update_tx* - When the counterparty receives an update tx:
 
-- if the channel is OPEN or PENDING_CLOSED
-  - check that it is signed by counterparty
-  - check that the sequence number is higher than (highest sequence number of MyProposedUpdateTx and TheirProposedUpdateTx)
-  - save update as TheirProposedUpdateTx
+### Counterparties
 
+#### List all counterparties
 
-*peer/caller/confirm_update_tx* - When a peer wants to approve an update tx:
+`counterparties` returns a list of all accounts of counterparties known to the USC Peer. Counterparties are peers that USC can start channels with. Counterparties embed the information for their judge.
 
-- if the channel is OPEN or PENDING_CLOSED
-  - check if channel has an update tx to be approved
-  - sign it and save it in LastFullUpdateTx
-  - send it to the counterparty
+*Example:*
 
+GET `https://localhost:4456/counterparties`
 
-## Closing
+Response:
 
-*peer/caller/close_channel* -
+```
+[
+  {
+    "name": "AC2346 at SFFCU",
+    "pubkey": "R5lVVs82M80i5OpR369StJqaHS61Ld-PzTCfS-0zyAA=",
+    "judge": {
+      "name": "San Francisco Federal Credit Union",
+      "pubkey": "xcYNnNW1oA9pB0LeQg_UCKw3FC8itnVq1csGrHdCV6o=",
+      "address": "https://sanfranciscofcu.com/channels/"
+    }
+  },
+  ...
+]
+```
 
-- if the channel is OPEN or PENDING CLOSED:
-  - send the LastFullUpdateTx to the judge.
+#### Counterparties by pubkey
 
+`counterparties/pubkey/<pubkey>` returns the counterparty with the specified pubkey.
 
-*judge/peer/add_cancellation_tx* - When a judge receives a cancellation tx:
+*Example:*
 
-- if the channel is OPEN:
-  - check that it is signed by one of the channel's accounts
-  - place channel in PENDING_CLOSE
+GET `https://localhost:4456/counterparties/pubkey/R5lVVs82M80i5OpR369StJqaHS61Ld-PzTCfS-0zyAA=`
 
-
-*judge/peer/add_update_tx* - When a judge receives a LastFullUpdateTx:
-
- - if the channel is OPEN:
-  - check that it is signed by both of the channel's accounts
-  - save it and the closing time with the channel
-
-- if the channel is PENDING_CLOSED:
-  - check that the LastFullUpdateTx is signed by both of the channel's accounts
-
-  - if the channel does not have a LastFullUpdateTx or if peer's LastFullUpdateTx SequenceNumber is equal to or higher than the judge's own:
-    - save the peer's LastFullUpdateTx with the channel, overwriting any existing LastFullUpdateTx
+Response: A counterparty, see above.
 
 
-*peer/caller/new_follow_on_tx* - When a peer wants to submit a follow-on tx:
 
-- if the channel is OPEN:
-  - add to the channel.
+### Channels
 
-- if the channel is PENDING_CLOSED:
-  - sign it and send it to the judge.
+Channels embed information about their account, their counterparty, and their judge.
 
+#### List all channels
 
-*judge/peer/add_follow_on_tx* - When a judge receives a follow-on tx:
+`channels` returns a list of all channels which accounts on the USC Peer participate in.
 
-- if the channel is OPEN or PENDING_CLOSED:
-  - check that it is signed by one of the channel's accounts
-  - save it in the follow on txs array
+*Example:*
 
+Request: GET `https://localhost:4456/channels`
 
-*peer/caller/check_final_update_tx* - When a peer sees that a judge has posted a last LastFullUpdateTx:
+Response:
+```
+[
+  {
+    "channelId": "8789678",
+    "phase": "OPEN",
+    "openingTx": {
+      "channelId": "8789678",
+      "pubkeys": [
+        "R5lVVs82M80i5OpR369StJqaHS61Ld-PzTCfS-0zyAA=",
+        "prNVb9C260wELZ3RYmrJ9TsZ_2NCGYcUBVZSSGHUsYQ="
+      ],
+      "state": "{\"R5lVVs82M80i5OpR369StJqaHS61Ld-PzTCfS-0zyAA=\":100,\"prNVb9C260wELZ3RYmrJ9TsZ_2NCGYcUBVZSSGHUsYQ=\":100}"
+    },
+    "lastFullUpdateTx": {
+      "channelId": "8789678",
+      "sequenceNumber": 7,
+      "fast": false,
+      "state": "{\"R5lVVs82M80i5OpR369StJqaHS61Ld-PzTCfS-0zyAA=\":105,\"prNVb9C260wELZ3RYmrJ9TsZ_2NCGYcUBVZSSGHUsYQ=\":95}"
+    },
+    "myProposedUpdateTx": {
+      "channelId": "8789678",
+      "sequenceNumber": 7,
+      "fast": false,
+      "state": "{\"R5lVVs82M80i5OpR369StJqaHS61Ld-PzTCfS-0zyAA=\":105,\"prNVb9C260wELZ3RYmrJ9TsZ_2NCGYcUBVZSSGHUsYQ=\":95}"
+    },
+    "theirProposedUpdateTx": {
+      "channelId": "8789678",
+      "sequenceNumber": 6,
+      "fast": false,
+      "state": "{\"R5lVVs82M80i5OpR369StJqaHS61Ld-PzTCfS-0zyAA=\":102,\"prNVb9C260wELZ3RYmrJ9TsZ_2NCGYcUBVZSSGHUsYQ=\":98}"
+    },
+    "followOnTxs": [],
+    "judge": {
+      "name": "San Francisco Federal Credit Union",
+      "pubkey": "xcYNnNW1oA9pB0LeQg_UCKw3FC8itnVq1csGrHdCV6o=",
+      "address": "https://sanfranciscofcu.com/channels/"
+    },
+    "account": {
+      "name": "AC7739 at SFFCU",
+      "pubkey": "R5lVVs82M80i5OpR369StJqaHS61Ld-PzTCfS-0zyAA=",
+      "privkey": "k4NkO3BNxNN8qsdPvsKv9AEJMP_IqIqluy77HLcN1gVHmVVWzzYzzSLk6lHfr1K0mpodLrUt34_NMJ9L7TPIAA==",
+      "judge": {
+        "name": "San Francisco Federal Credit Union",
+        "pubkey": "xcYNnNW1oA9pB0LeQg_UCKw3FC8itnVq1csGrHdCV6o=",
+        "address": "https://sanfranciscofcu.com/channels/"
+      }
+    },
+    "counterparty": {
+      "name": "AC2346 at SFFCU",
+      "pubkey": "prNVb9C260wELZ3RYmrJ9TsZ_2NCGYcUBVZSSGHUsYQ=",
+      "judge": {
+        "name": "San Francisco Federal Credit Union",
+        "pubkey": "xcYNnNW1oA9pB0LeQg_UCKw3FC8itnVq1csGrHdCV6o=",
+        "address": "https://sanfranciscofcu.com/channels/"
+      }
+    }
+  },
+  ...
+]
+```
 
-- if channel is OPEN or PENDING_CLOSED:
-  - check that the last LastFullUpdateTx is signed by the peer, the counterparty, and the judge.
+### Channels by Id
 
-  - if judge's last LastFullUpdateTx SequenceNumber is equal to or higher than the peer's own:
-    - place channel into PENDING_CLOSED if it isn't already
-  - else:
-    - send peer's last LastFullUpdateTx to judge
+`channels/<channelId>` returns the channel with the specified channelId.
 
+*Example:*
 
-## Daemon
+Request: GET `https://localhost:4456/channels_by_id/8789678`
 
-The usc daemon checks with the judge of every channel every once in a while. If it finds that an update tx has been posted, it calls peer/caller/check_final_update_tx
+Response: A channel, see above
+
+// "privkey": "9Am0PA0NPNeeHuyAb2ssNkuX0Q0UEzoqopPPAL28BIjFxg2c1bWgD2kHQt5CD9QIrDcULyK2dWrVywasd0JXqg=="

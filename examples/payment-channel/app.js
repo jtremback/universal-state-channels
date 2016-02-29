@@ -1,7 +1,7 @@
 const request = require('request')
 const minimist = require('minimist')
 
-var commands = {
+let commands = {
   // View all my accounts
   viewAccounts() {
     get('http://localhost:4545/view_accounts', function (err, res, accounts) {
@@ -9,9 +9,9 @@ var commands = {
       console.log(accounts)
     })
   },
-  // View all channels for a given account
+  // View all channels
   viewChannels({ accountPubkey }) {
-    get('http://localhost:4545/view_channels/' + accountPubkey, function (err, res, channels) {
+    get('http://localhost:4545/channels/' + accountPubkey, function (err, res, channels) {
       if (err) { console.log(err) }
       console.log(channels)
     })
