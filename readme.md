@@ -48,8 +48,6 @@ GET `https://localhost:4456/accounts`
 
 `accounts_by_pubkey` returns account with the specified pubkey.
 
-*Example:*
-
 GET `https://localhost:4456/accounts_by_id/R5lVVs82M80i5OpR369StJqaHS61Ld-PzTCfS-0zyAA=`
 
 Response: An account, see above.
@@ -61,8 +59,6 @@ Response: An account, see above.
 #### List all counterparties
 
 `counterparties` returns a list of all accounts of counterparties known to the USC Peer. Counterparties are peers that USC can start channels with. Counterparties embed the information for their judge.
-
-*Example:*
 
 GET `https://localhost:4456/counterparties`
 
@@ -87,8 +83,6 @@ Response:
 
 `counterparties/pubkey/<pubkey>` returns the counterparty with the specified pubkey.
 
-*Example:*
-
 GET `https://localhost:4456/counterparties/pubkey/R5lVVs82M80i5OpR369StJqaHS61Ld-PzTCfS-0zyAA=`
 
 Response: A counterparty, see above.
@@ -102,8 +96,6 @@ Channels embed information about their account, their counterparty, and their ju
 #### List all channels
 
 `channels` returns a list of all channels which accounts on the USC Peer participate in.
-
-*Example:*
 
 Request: GET `https://localhost:4456/channels`
 
@@ -174,8 +166,6 @@ Response:
 
 `channels/<channelId>` returns the channel with the specified channelId.
 
-*Example:*
-
 Request:
 
 `GET https://localhost:4456/channels_by_id/8789678`
@@ -187,8 +177,6 @@ Response: A channel, see above.
 ### New Channel
 
 `new_channel` creates a new channel in PENDING_OPEN phase, signs it, and sends it to the counterparty.
-
-*Example:*
 
 Request:
 
@@ -211,8 +199,6 @@ Response: A new channel, see above.
 
 `accept_channel` is called on a channel that is in PENDING_OPEN phase. The channel is signed, saved, and sent to the judge.
 
-*Example:*
-
 Request:
 
 ```json
@@ -230,8 +216,6 @@ Response: A new channel.
 
 `reject_channel` is called on a channel that is in PENDING_OPEN phase. The channel is deleted and the counterparty is notified of the rejection.
 
-*Example:*
-
 Request:
 
 ```json
@@ -248,8 +232,6 @@ Response: 200 OK if the rejection succeeded.
 ### Cancel channel
 
 `cancel_channel` is called on a channel that is in OPEN phase, but has not yet had an update transaction posted. It sends a cancellation transaction to instruct the judge to close the channel.
-
-*Example:*
 
 Request:
 
