@@ -174,27 +174,25 @@ Response: A channel, see above.
 
 ## Channel lifecycle
 
-- [`new_channel`](#new-channel)
+[`new_channel`](#new-channel) ->
 
-#### PROPOSED phase
+>#### PROPOSED phase
+>- [`accept_channel`](#accept-channel)
+>- [`reject_channel`](#reject-channel)
 
-- [`accept_channel`](#accept-channel)
-- [`reject_channel`](#reject-channel)
+>#### OPEN phase
+>- [`cancel_channel`](#cancel-channel)
+>- [`new_update_tx`](#new-update-tx)
+>- [`accept_update_tx`](#accept-update-tx)
+>- [`reject_update_tx`](#reject-update-tx)
+>- [`close_channel`](#close-channel)
+>- [`check_channel`](#check-channel)
 
-#### OPEN phase
+>#### HOLD phase
+>- [`check_channel`](#check-channel)
 
-- [`cancel_channel`](#cancel-channel)
-- [`new_update_tx`](#new-update-tx)
-- [`accept_update_tx`](#accept-update-tx)
-- [`reject_update_tx`](#reject-update-tx)
-- [`close_channel`](#close-channel)
-- [`check_channel`](#check-channel)
-
-#### HOLD phase
-
-- [`check_channel`](#check-channel)
-
-#### CLOSED phase
+>#### CLOSED phase
+>- (no actions possible)
 
 
 ### New Channel
