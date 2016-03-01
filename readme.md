@@ -176,9 +176,11 @@ Response: A channel, see above.
 
 [`new_channel`](#new-channel) ->
 
+
 >#### PROPOSED phase
 >- [`accept_channel`](#accept-channel)
 >- [`reject_channel`](#reject-channel)
+
 
 >#### OPEN phase
 >- [`cancel_channel`](#cancel-channel)
@@ -188,8 +190,10 @@ Response: A channel, see above.
 >- [`close_channel`](#close-channel)
 >- [`check_channel`](#check-channel)
 
+
 >#### HOLD phase
 >- [`check_channel`](#check-channel)
+
 
 >#### CLOSED phase
 >- (no actions possible)
