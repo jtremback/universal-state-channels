@@ -18,7 +18,7 @@
 - make a new channel in a PENDING_OPEN phase
 
 
-*peer/caller/confirm_channel* - When a peer wants to confirm a proposed channel:
+*peer/caller/accept_channel* - When a peer wants to confirm a proposed channel:
 
 - if the channel is PENDING_OPEN:
   - sign the opening tx
@@ -32,7 +32,7 @@
 - make channel in PENDING_OPEN phase with opening tx and save
 
 
-*judge/caller/confirm_channel* - When a judge wants to confirm a proposed channel:
+*judge/caller/accept_channel* - When a judge wants to confirm a proposed channel:
 
 - if the channel is PENDING_OPEN:
   - change channel phase to OPEN
@@ -66,7 +66,7 @@
   - save update as TheirProposedUpdateTx
 
 
-*peer/caller/confirm_update_tx* - When a peer wants to approve an update tx:
+*peer/caller/accept_update_tx* - When a peer wants to approve an update tx:
 
 - if the channel is OPEN or PENDING_CLOSED
   - check if channel has an update tx to be approved
