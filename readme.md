@@ -174,7 +174,7 @@ Response: A channel, see above.
 
 ## Channel lifecycle
 
-[`new_channel`](#new-channel) ->
+[`propose_channel`](#propose-channel) ->
 
 >#### PROPOSED phase
 >- [`accept_channel`](#accept-channel)
@@ -182,7 +182,7 @@ Response: A channel, see above.
 
 >#### OPEN phase
 >- [`cancel_channel`](#cancel-channel)
->- [`new_update_tx`](#new-update-tx)
+>- [`propose_update_tx`](#propose-update-tx)
 >- [`accept_update_tx`](#accept-update-tx)
 >- [`reject_update_tx`](#reject-update-tx)
 >- [`close_channel`](#close-channel)
@@ -197,12 +197,12 @@ Response: A channel, see above.
 
 ### New Channel
 
-`new_channel` creates a new channel in PENDING_OPEN phase, signs it, and sends it to the counterparty.
+`propose_channel` creates a new channel in PENDING_OPEN phase, signs it, and sends it to the counterparty.
 
 Request:
 
 ```json
-POST `https://localhost:4456/new_channel`
+POST `https://localhost:4456/propose_channel`
 
 {
   "channelId": "8789678",
@@ -267,14 +267,14 @@ POST `https://localhost:4456/cancel_channel`
 Response: `200 OK`
 
 
-### New update tx
+### Propose update tx
 
-`new_update_tx` is one of USC's key calls. It makes a transaction that updates the channel's state, signs it, and sends it to the counterparty.
+`propose_update_tx` is one of USC's key calls. It makes a transaction that updates the channel's state, signs it, and sends it to the counterparty.
 
 Request:
 
 ```json
-POST `https://localhost:4456/new_update_tx`
+POST `https://localhost:4456/propose_update_tx`
 
 {
   "channelId": "8789678",
