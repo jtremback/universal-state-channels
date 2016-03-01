@@ -28,7 +28,7 @@ GET `https://localhost:4456/accounts`
 
 *Example response:*
 
-```
+```json
 [
   {
     "name": "AC7739 at SFFCU",
@@ -68,7 +68,7 @@ GET `https://localhost:4456/counterparties`
 
 Response:
 
-```
+```json
 [
   {
     "name": "AC2346 at SFFCU",
@@ -108,7 +108,8 @@ Channels embed information about their account, their counterparty, and their ju
 Request: GET `https://localhost:4456/channels`
 
 Response:
-```
+
+```json
 [
   {
     "channelId": "8789678",
@@ -175,8 +176,92 @@ Response:
 
 *Example:*
 
-Request: GET `https://localhost:4456/channels_by_id/8789678`
+Request:
 
-Response: A channel, see above
+`GET https://localhost:4456/channels_by_id/8789678`
 
-// "privkey": "9Am0PA0NPNeeHuyAb2ssNkuX0Q0UEzoqopPPAL28BIjFxg2c1bWgD2kHQt5CD9QIrDcULyK2dWrVywasd0JXqg=="
+Response: A channel, see above.
+
+## Channel lifecycle
+
+### New Channel
+
+`new_channel` creates a new channel in PENDING_OPEN phase, signs it, and sends it to the counterparty.
+
+*Example:*
+
+Request:
+
+```json
+POST `https://localhost:4456/new_channel`
+
+{
+  "channelId": "8789678",
+  "accountPubkey": "R5lVVs82M80i5OpR369StJqaHS61Ld-PzTCfS-0zyAA=",
+  "counterpartyPubkey": "prNVb9C260wELZ3RYmrJ9TsZ_2NCGYcUBVZSSGHUsYQ=",
+  "state": "{\"R5lVVs82M80i5OpR369StJqaHS61Ld-PzTCfS-0zyAA=\":100,\"prNVb9C260wELZ3RYmrJ9TsZ_2NCGYcUBVZSSGHUsYQ=\":100}",
+  "holdPeriod": 86400000
+}
+```
+
+Response: A new channel, see above.
+
+
+### Accept channel
+
+`accept_channel` is called on a channel that is in PENDING_OPEN phase. The channel is signed, saved, and sent to the judge.
+
+*Example:*
+
+Request:
+
+```json
+POST `https://localhost:4456/accept_channel`
+
+{
+  "channelId": "8789678"
+}
+```
+
+Response: A new channel.
+
+
+### Reject channel
+
+`reject_channel` is called on a channel that is in PENDING_OPEN phase. The channel is deleted and the counterparty is notified of the rejection.
+
+*Example:*
+
+Request:
+
+```json
+POST `https://localhost:4456/reject_channel`
+
+{
+  "channelId": "8789678"
+}
+```
+
+Response: 200 OK if the rejection succeeded.
+
+
+### Cancel channel
+
+`cancel_channel` is called on a channel that is in OPEN phase, but has not yet had an update transaction posted. It sends a cancellation transaction to instruct the judge to close the channel.
+
+*Example:*
+
+Request:
+
+```json
+POST `https://localhost:4456/cancel_channel`
+
+{
+  "channelId": "8789678"
+}
+```
+
+Response: 200 OK if the cancellation succeeded.
+
+
+### New Update Tx
