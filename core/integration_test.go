@@ -127,16 +127,16 @@ func Test(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ch1.SignUpdateTx(utxEv, utx)
+	ch1.SignProposedUpdateTx(utxEv, utx)
 
 	// --- Send to second party ---
 
-	err = ch2.CheckUpdateTx(utxEv, utx)
+	err = ch2.AddUpdateTx(utxEv, utx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	ch2.CosignUpdateTx(utxEv, utx)
+	ch2.CosignProposedUpdateTx()
 
 	// --- Make follow on tx
 
@@ -163,12 +163,12 @@ func Test(t *testing.T) {
 	j_judge.AppendSignature(utxEv)
 
 	// --- Back to participants ---
-	_, err = ch1.CheckFinalUpdateTx(utxEv, utx)
+	_, err = ch1.AddFinalUpdateTx(utxEv, utx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = ch2.CheckFinalUpdateTx(utxEv, utx)
+	_, err = ch2.AddFinalUpdateTx(utxEv, utx)
 	if err != nil {
 		t.Fatal(err)
 	}
