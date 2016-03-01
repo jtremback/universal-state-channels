@@ -209,7 +209,7 @@ POST `https://localhost:4456/accept_channel`
 }
 ```
 
-Response: A new channel.
+Response: A new channel, see above.
 
 
 ### Reject channel
@@ -226,7 +226,7 @@ POST `https://localhost:4456/reject_channel`
 }
 ```
 
-Response: 200 OK if the rejection succeeded.
+Response: `200 OK`
 
 
 ### Cancel channel
@@ -243,7 +243,82 @@ POST `https://localhost:4456/cancel_channel`
 }
 ```
 
-Response: 200 OK if the cancellation succeeded.
+Response: `200 OK`
 
 
-### New Update Tx
+### New update tx
+
+`new_update_tx` is one of USC's key calls. It makes a transaction that updates the channel's state, signs it, and sends it to the counterparty.
+
+Request:
+
+```json
+POST `https://localhost:4456/new_update_tx`
+
+{
+  "channelId": "8789678",
+  "state": "{\"R5lVVs82M80i5OpR369StJqaHS61Ld-PzTCfS-0zyAA=\":105,\"prNVb9C260wELZ3RYmrJ9TsZ_2NCGYcUBVZSSGHUsYQ=\":95}"
+}
+```
+
+Response: `200 OK`
+
+
+### Accept update tx
+
+`accept_update_tx` is called to accept the update tx saved in a channel's `theirProposedUpdateTx`. The update tx is signed, replaces the channel's `lastFullUpdateTx` and is sent back to the counterparty.
+
+```json
+POST `https://localhost:4456/accept_update_tx`
+
+{
+  "channelId": "8789678"
+}
+```
+
+Response: `200 OK`
+
+
+### Reject update tx
+
+`reject_update_tx` is called to reject an update tx. The counterparty is informed that the update tx saved in `theirProposedUpdateTx` will never be accepted.
+
+```json
+POST `https://localhost:4456/reject_update_tx`
+
+{
+  "channelId": "8789678"
+}
+```
+
+Response: `200 OK`
+
+
+### Close channel
+
+`close_channel` sends the channel's `lastFullUpdateTx` to the judge, putting the channel into PENDING_CLOSE and starting the hold period.
+
+```json
+POST `https://localhost:4456/close_channel`
+
+{
+  "channelId": "8789678"
+}
+```
+
+Response: `200 OK`
+
+
+### Check channel for cheating
+
+`check_channel` is possibly USC's most important call. This must be called at least once per hold period. It checks if the counterparty has tried to cheat by posting an old update tx. If so, it sends the judge the correct `lastFullUpdateTx`.
+
+```json
+POST `https://localhost:4456/check_channel`
+
+{
+  "channelId": "8789678"
+}
+```
+
+Response: `200 OK`
