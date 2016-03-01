@@ -174,6 +174,29 @@ Response: A channel, see above.
 
 ## Channel lifecycle
 
+`new_channel`
+
+#### PROPOSED phase
+
+`accept_channel`
+`reject_channel`
+
+#### OPEN phase
+
+`cancel_channel`
+`new_update_tx`
+`accept_update_tx`
+`reject_update_tx`
+`close_channel`
+`check_channel`
+
+#### HOLD phase
+
+`check_channel`
+
+#### CLOSED phase
+
+
 ### New Channel
 
 `new_channel` creates a new channel in PENDING_OPEN phase, signs it, and sends it to the counterparty.
@@ -231,7 +254,7 @@ Response: `200 OK`
 
 ### Cancel channel
 
-`cancel_channel` is called on a channel that is in OPEN phase, but has not yet had an update transaction posted. It sends a cancellation transaction to instruct the judge to close the channel.
+`cancel_channel` is called on a channel that is in OPEN phase, but has not yet had an update transaction posted. It sends a cancellation transaction to instruct the judge to close the channel with the state in the opening tx. The cancellation can be overridden during the hold period by any update tx.
 
 Request:
 
@@ -311,7 +334,7 @@ Response: `200 OK`
 
 ### Check channel for cheating
 
-`check_channel` is possibly USC's most important call. This must be called at least once per hold period. It checks if the counterparty has tried to cheat by posting an old update tx. If so, it sends the judge the correct `lastFullUpdateTx`.
+`check_channel` is possibly USC's most important call. This must be called at least once per hold period, the entire time the channel is open. It checks if the counterparty has tried to cheat by posting an old update tx. If so, it sends the judge the correct `lastFullUpdateTx`.
 
 ```json
 POST `https://localhost:4456/check_channel`
