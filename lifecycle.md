@@ -109,20 +109,8 @@
 - if the channel is OPEN:
   - check that the UpdateTx is signed by both of the channel's accounts
 
-  - if the UpdateTx has a higher SequenceNumber than the channel's LastFullUpdateTx and ProposedUpdateTx
-    - replace the ProposedUpdateTx
-
-
-
-- if the channel is PENDING_CLOSED:
-  - check that the LastFullUpdateTx is signed by both of the channel's accounts
-
-  - save the UpdateTx with the channel as LastFullUpdateTx
-  - if the channel does not have a LastFullUpdateTx or if peer's LastFullUpdateTx SequenceNumber is equal to or higher than the judge's own:
-
-*judge/caller/accept_update_tx* -
-
-## *judge/caller/check_channel* - Is called by the judge caller to put the channel into HOLD or CLOSED depending on how long has gone
+  - if the UpdateTx has a higher SequenceNumber than the channel's LastFullUpdateTx
+    - replace the LastFullUpdateTx
 
 *peer/caller/new_follow_on_tx* - When a peer wants to submit a follow-on tx:
 
@@ -154,3 +142,9 @@
 ## Daemon
 
 The usc daemon checks with the judge of every channel every once in a while. If it finds that an update tx has been posted, it calls peer/caller/check_final_update_tx
+
+
+
+When a peer sends an update tx to the judge, the judge appends it to the UpdateTxs array and sets the ClosingTime if it isn't already set.
+
+When a judge caller checks in and sees that there is a channel with a ClosingTime + HoldPeriod that is earlier than the current time, they can run their verification code on the UpdateTxs array and the FollowOnTxs array and close the channel if desired. If the UpdateTx with the highest SequenceNumber is not valid the judge caller is able to check an earlier one, or not.

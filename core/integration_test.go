@@ -155,14 +155,11 @@ func Test(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = jch.ConfirmUpdateTx(utxEv, utx)
-	if err != nil {
-		t.Fatal(err)
-	}
 
-	j_judge.AppendSignature(utxEv)
+	jch.Judge.AppendSignature(utxEv)
 
 	// --- Back to participants ---
+
 	_, err = ch1.AddFinalUpdateTx(utxEv, utx)
 	if err != nil {
 		t.Fatal(err)
