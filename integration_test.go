@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/boltdb/bolt"
+	judgeLogic "github.com/jtremback/usc/judge/logic"
 	judgeServers "github.com/jtremback/usc/judge/servers"
 	peerClients "github.com/jtremback/usc/peer/clients"
 	peerLogic "github.com/jtremback/usc/peer/logic"
@@ -49,6 +50,29 @@ func createPeer(db *bolt.DB) *Peer {
 	}
 }
 
+func createJudge(db *bolt.DB) *Judge {
+	callerAPI := &judgeLogic.CallerAPI{
+		DB: db,
+	}
+
+	callerSrv := &judgeServers.CallerHTTP{
+		Logic: callerAPI,
+	}
+
+	peerAPI := &judgeLogic.PeerAPI{
+		DB: db,
+	}
+
+	peerSrv := &judgeServers.PeerHTTP{
+		Logic: peerAPI,
+	}
+
+	return &Judge{
+		CallerSrv: callerSrv,
+		PeerSrv:   peerSrv,
+	}
+}
+
 func TestIntegration(t *testing.T) {
 	p1DB, err := bolt.Open("/tmp/p1.db", 0600, nil)
 	if err != nil {
@@ -68,4 +92,9 @@ func TestIntegration(t *testing.T) {
 	}
 	defer jDB.Close()
 
+	p1 := createPeer(p1DB)
+	p2 := createPeer(p2DB)
+	j := createPeer(jDB)
+
+	fmt.Println(p1, p2, j)
 }
