@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/boltdb/bolt"
+	"github.com/jtremback/usc/core/wire"
 	judgeLogic "github.com/jtremback/usc/judge/logic"
 	judgeServers "github.com/jtremback/usc/judge/servers"
 	peerClients "github.com/jtremback/usc/peer/clients"
@@ -20,6 +21,28 @@ type Peer struct {
 type Judge struct {
 	CallerSrv *judgeServers.CallerHTTP
 	PeerSrv   *judgeServers.PeerHTTP
+}
+
+type CounterpartyClientHarness struct {
+}
+
+type JudgeClientHarness struct {
+}
+
+func (a *JudgeClientHarness) AddChannel(ev *wire.Envelope, address string) error {
+	return a.sendEnvelope(ev, address+"/add_channel")
+}
+
+func (a *JudgeClientHarness) AddCancellationTx(ev *wire.Envelope, address string) error {
+	return a.sendEnvelope(ev, address+"/add_cancellation_tx")
+}
+
+func (a *JudgeClientHarness) AddUpdateTx(ev *wire.Envelope, address string) error {
+	return a.sendEnvelope(ev, address+"/add_update_tx")
+}
+
+func (a *JudgeClientHarness) AddFollowOnTx(ev *wire.Envelope, address string) error {
+	return a.sendEnvelope(ev, address+"/add_follow_on_tx")
 }
 
 func createPeer(db *bolt.DB) *Peer {
