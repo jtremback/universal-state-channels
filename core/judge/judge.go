@@ -59,9 +59,6 @@ type Channel struct {
 	OpeningTx         *wire.OpeningTx
 	OpeningTxEnvelope *wire.Envelope
 
-	ProposedUpdateTx         *wire.UpdateTx
-	ProposedUpdateTxEnvelope *wire.Envelope
-
 	LastFullUpdateTx         *wire.UpdateTx
 	LastFullUpdateTxEnvelope *wire.Envelope
 
@@ -139,24 +136,6 @@ func (ch *Channel) Confirm() {
 	ch.Phase = OPEN
 }
 
-func (ch *Channel) HighestSeq() uint32 {
-	var num uint32
-	num = 0
-	if ch.ProposedUpdateTx != nil {
-		if ch.ProposedUpdateTx.SequenceNumber > num {
-			num = ch.ProposedUpdateTx.SequenceNumber
-		}
-	}
-
-	if ch.LastFullUpdateTx != nil {
-		if ch.LastFullUpdateTx.SequenceNumber > num {
-			num = ch.LastFullUpdateTx.SequenceNumber
-		}
-	}
-
-	return num
-}
-
 func (ch *Channel) AddUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
 	if !(ch.Phase == OPEN || ch.Phase == PENDING_CLOSED) {
 		return errors.New("channel not OPEN or PENDING_CLOSED")
@@ -175,12 +154,6 @@ func (ch *Channel) AddUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
 		return errors.New("wrong channel id")
 	}
 
-	// if ch.ProposedUpdateTx != nil {
-	// 	if !(ch.ProposedUpdateTx.SequenceNumber < utx.SequenceNumber) {
-	// 		return errors.New("sequence number too low")
-	// 	}
-	// }
-
 	if ch.LastFullUpdateTx != nil {
 		if !(ch.LastFullUpdateTx.SequenceNumber < utx.SequenceNumber) {
 			return errors.New("sequence number too low")
@@ -191,17 +164,6 @@ func (ch *Channel) AddUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
 	ch.LastFullUpdateTxEnvelope = ev
 	return nil
 }
-
-// func (ch *Channel) ConfirmUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
-// 	if !(ch.Phase == OPEN || ch.Phase == PENDING_CLOSED) {
-// 		return errors.New("channel not OPEN or PENDING_CLOSED")
-// 	}
-// 	ch.Phase = PENDING_CLOSED
-// 	ch.ProposedUpdateTx = utx
-// 	ch.ProposedUpdateTxEnvelope = ev
-// 	ch.CloseTime = time.Now()
-// 	return nil
-// }
 
 func (ch *Channel) AddCancellationTx(ev *wire.Envelope) error {
 	if ch.Phase != OPEN {
