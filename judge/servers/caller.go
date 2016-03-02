@@ -43,14 +43,15 @@ func (a *CallerHTTP) closeChannel(w http.ResponseWriter, r *http.Request) {
 	}
 
 	req := &struct {
-		ChannelId string
+		ChannelId     string
+		UpdateTxIndex int
 	}{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
 		a.fail(w, "body parsing error", 500)
 	}
 
-	err = a.Logic.CloseChannel(req.ChannelId)
+	err = a.Logic.CloseChannel(req.ChannelId, req.UpdateTxIndex)
 	if err != nil {
 		a.fail(w, err.Error(), 500)
 	}

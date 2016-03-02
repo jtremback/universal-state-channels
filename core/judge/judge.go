@@ -59,8 +59,11 @@ type Channel struct {
 	OpeningTx         *wire.OpeningTx
 	OpeningTxEnvelope *wire.Envelope
 
-	LastFullUpdateTxs         []*wire.UpdateTx
-	LastFullUpdateTxEnvelopes []*wire.Envelope
+	UpdateTxs         []*wire.UpdateTx
+	UpdateTxEnvelopes []*wire.Envelope
+
+	LastFullUpdateTx         *wire.UpdateTx
+	LastFullUpdateTxEnvelope *wire.Envelope
 
 	CloseTime              time.Time
 	CancellationTxEnvelope *wire.Envelope
@@ -169,8 +172,8 @@ func (ch *Channel) AddUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
 		return errors.New("signature 1 not valid")
 	}
 
-	ch.LastFullUpdateTxs = append(ch.LastFullUpdateTxs, utx)
-	ch.LastFullUpdateTxEnvelopes = append(ch.LastFullUpdateTxEnvelopes, ev)
+	ch.UpdateTxs = append(ch.UpdateTxs, utx)
+	ch.UpdateTxEnvelopes = append(ch.UpdateTxEnvelopes, ev)
 
 	return nil
 }

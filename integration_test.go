@@ -6,7 +6,7 @@ import (
 
 	"github.com/boltdb/bolt"
 	judgeServers "github.com/jtremback/usc/judge/servers"
-	"github.com/jtremback/usc/peer/clients"
+	peerClients "github.com/jtremback/usc/peer/clients"
 	peerLogic "github.com/jtremback/usc/peer/logic"
 	peerServers "github.com/jtremback/usc/peer/servers"
 )
@@ -22,8 +22,8 @@ type Judge struct {
 }
 
 func createPeer(db *bolt.DB) *Peer {
-	counterpartyCl := &clients.CounterpartyHTTP{}
-	judgeCl := &clients.JudgeHTTP{}
+	counterpartyCl := &peerClients.CounterpartyHTTP{}
+	judgeCl := &peerClients.JudgeHTTP{}
 
 	callerAPI := &peerLogic.CallerAPI{
 		DB:             db,
@@ -50,19 +50,19 @@ func createPeer(db *bolt.DB) *Peer {
 }
 
 func TestIntegration(t *testing.T) {
-	p1DB, err := bolt.Open("p1.db", 0600, nil)
+	p1DB, err := bolt.Open("/tmp/p1.db", 0600, nil)
 	if err != nil {
 		fmt.Println(err)
 	}
 	defer p1DB.Close()
 
-	p2DB, err := bolt.Open("p2.db", 0600, nil)
+	p2DB, err := bolt.Open("/tmp/p2.db", 0600, nil)
 	if err != nil {
 		fmt.Println(err)
 	}
 	defer p2DB.Close()
 
-	jDB, err := bolt.Open("j.db", 0600, nil)
+	jDB, err := bolt.Open("/tmp/j.db", 0600, nil)
 	if err != nil {
 		fmt.Println(err)
 	}

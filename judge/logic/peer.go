@@ -73,12 +73,7 @@ func (a *PeerAPI) AddUpdateTx(ev *wire.Envelope) error {
 			return err
 		}
 
-		err = ch.VerifyUpdateTx(ev, utx)
-		if err != nil {
-			return err
-		}
-
-		err = ch.StartHoldPeriod(utx)
+		err = ch.AddUpdateTx(ev, utx)
 		if err != nil {
 			return err
 		}

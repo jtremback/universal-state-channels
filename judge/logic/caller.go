@@ -21,7 +21,7 @@ func (a *CallerAPI) ConfirmChannel(chID string) error {
 			return err
 		}
 
-		ch.OpeningTxEnvelope = ch.Judge.AppendSignature(ch.OpeningTxEnvelope)
+		ch.Judge.AppendSignature(ch.OpeningTxEnvelope)
 
 		access.SetChannel(tx, ch)
 		if err != nil {
@@ -32,7 +32,7 @@ func (a *CallerAPI) ConfirmChannel(chID string) error {
 	})
 }
 
-func (a *CallerAPI) CloseChannel(chID string) error {
+func (a *CallerAPI) CloseChannel(chID string, i int) error {
 	var err error
 	return a.DB.Update(func(tx *bolt.Tx) error {
 		ch := &core.Channel{}
@@ -41,7 +41,13 @@ func (a *CallerAPI) CloseChannel(chID string) error {
 			return err
 		}
 
-		ch.AddUpdateTx()
+		ev := ch.UpdateTxEnvelopes[i]
+		utx := ch.UpdateTxs[i]
+
+		ch.Judge.AppendSignature(ev)
+
+		ch.LastFullUpdateTx = utx
+		ch.LastFullUpdateTxEnvelope = ev
 
 		access.SetChannel(tx, ch)
 		if err != nil {
