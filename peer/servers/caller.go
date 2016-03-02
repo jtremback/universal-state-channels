@@ -7,18 +7,18 @@ import (
 	"github.com/jtremback/usc/peer/logic"
 )
 
-type Caller struct {
-	Logic *logic.Caller
+type CallerHTTP struct {
+	Logic *logic.CallerAPI
 }
 
-func (a *Caller) MountRoutes(mux *http.ServeMux) {
+func (a *CallerHTTP) MountRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/propose_channel", a.proposeChannel)
 	mux.HandleFunc("/confirm_channel", a.confirmChannel)
 	mux.HandleFunc("/send_update_tx", a.sendUpdateTx)
 	mux.HandleFunc("/confirm_update_tx", a.confirmUpdateTx)
 }
 
-func (a *Caller) proposeChannel(w http.ResponseWriter, r *http.Request) {
+func (a *CallerHTTP) proposeChannel(w http.ResponseWriter, r *http.Request) {
 	if r.Body == nil {
 		a.fail(w, "no body", 500)
 		return
@@ -41,7 +41,7 @@ func (a *Caller) proposeChannel(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (a *Caller) confirmChannel(w http.ResponseWriter, r *http.Request) {
+func (a *CallerHTTP) confirmChannel(w http.ResponseWriter, r *http.Request) {
 	if r.Body == nil {
 		a.fail(w, "no body", 500)
 		return
@@ -61,7 +61,7 @@ func (a *Caller) confirmChannel(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (a *Caller) sendUpdateTx(w http.ResponseWriter, r *http.Request) {
+func (a *CallerHTTP) sendUpdateTx(w http.ResponseWriter, r *http.Request) {
 	if r.Body == nil {
 		a.fail(w, "no body", 500)
 		return
@@ -77,13 +77,13 @@ func (a *Caller) sendUpdateTx(w http.ResponseWriter, r *http.Request) {
 		a.fail(w, "body parsing error", 500)
 	}
 
-	err = a.Logic.SendUpdateTx(req.State, req.ChannelId, req.Fast)
+	err = a.Logic.NewUpdateTx(req.State, req.ChannelId, req.Fast)
 	if err != nil {
 		a.fail(w, err.Error(), 500)
 	}
 }
 
-func (a *Caller) confirmUpdateTx(w http.ResponseWriter, r *http.Request) {
+func (a *CallerHTTP) confirmUpdateTx(w http.ResponseWriter, r *http.Request) {
 	if r.Body == nil {
 		a.fail(w, "no body", 500)
 		return
@@ -103,7 +103,7 @@ func (a *Caller) confirmUpdateTx(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (a *Caller) fail(w http.ResponseWriter, msg string, status int) {
+func (a *CallerHTTP) fail(w http.ResponseWriter, msg string, status int) {
 	w.Header().Set("Content-Type", "application/json")
 
 	data := struct {
@@ -115,7 +115,7 @@ func (a *Caller) fail(w http.ResponseWriter, msg string, status int) {
 	w.Write(resp)
 }
 
-func (a *Caller) send(w http.ResponseWriter, data interface{}) {
+func (a *CallerHTTP) send(w http.ResponseWriter, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 
 	resp, err := json.Marshal(data)

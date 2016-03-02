@@ -17,17 +17,17 @@ func main() {
 	}
 	defer db.Close()
 
-	counterpartyCl := &clients.Counterparty{}
-	judgeCl := &clients.Judge{}
+	counterpartyCl := &clients.CounterpartyHTTP{}
+	judgeCl := &clients.JudgeHTTP{}
 
-	callerLog := &logic.Caller{
+	callerLog := &logic.CallerAPI{
 		DB:             db,
 		CounterpartyCl: counterpartyCl,
 		JudgeCl:        judgeCl,
 	}
 
 	callerMux := http.NewServeMux()
-	callerSrv := &servers.Caller{
+	callerSrv := &servers.CallerAPI{
 		Logic: callerLog,
 	}
 

@@ -175,11 +175,11 @@ func (ch *Channel) AddUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
 		return errors.New("wrong channel id")
 	}
 
-	if ch.ProposedUpdateTx != nil {
-		if !(ch.ProposedUpdateTx.SequenceNumber < utx.SequenceNumber) {
-			return errors.New("sequence number too low")
-		}
-	}
+	// if ch.ProposedUpdateTx != nil {
+	// 	if !(ch.ProposedUpdateTx.SequenceNumber < utx.SequenceNumber) {
+	// 		return errors.New("sequence number too low")
+	// 	}
+	// }
 
 	if ch.LastFullUpdateTx != nil {
 		if !(ch.LastFullUpdateTx.SequenceNumber < utx.SequenceNumber) {
@@ -187,21 +187,21 @@ func (ch *Channel) AddUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
 		}
 	}
 
-	ch.ProposedUpdateTx = utx
-	ch.ProposedUpdateTxEnvelope = ev
+	ch.LastFullUpdateTx = utx
+	ch.LastFullUpdateTxEnvelope = ev
 	return nil
 }
 
-func (ch *Channel) ConfirmUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
-	if !(ch.Phase == OPEN || ch.Phase == PENDING_CLOSED) {
-		return errors.New("channel not OPEN or PENDING_CLOSED")
-	}
-	ch.Phase = PENDING_CLOSED
-	ch.ProposedUpdateTx = utx
-	ch.ProposedUpdateTxEnvelope = ev
-	ch.CloseTime = time.Now()
-	return nil
-}
+// func (ch *Channel) ConfirmUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
+// 	if !(ch.Phase == OPEN || ch.Phase == PENDING_CLOSED) {
+// 		return errors.New("channel not OPEN or PENDING_CLOSED")
+// 	}
+// 	ch.Phase = PENDING_CLOSED
+// 	ch.ProposedUpdateTx = utx
+// 	ch.ProposedUpdateTxEnvelope = ev
+// 	ch.CloseTime = time.Now()
+// 	return nil
+// }
 
 func (ch *Channel) AddCancellationTx(ev *wire.Envelope) error {
 	if ch.Phase != OPEN {
@@ -223,7 +223,8 @@ func (ch *Channel) AddCancellationTx(ev *wire.Envelope) error {
 	return nil
 }
 
-func (ch *Channel) ConfirmClose() {
+func (ch *Channel) Close() {
+	ch.Judge.AppendSignature(ch.LastFullUpdateTxEnvelope)
 	ch.Phase = CLOSED
 }
 

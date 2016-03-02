@@ -89,18 +89,40 @@
   - place channel in PENDING_CLOSE
 
 
-*judge/peer/add_update_tx* - When a judge receives a LastFullUpdateTx:
+## *judge/peer/add_update_tx* - When a judge receives an UpdateTx:
 
- - if the channel is OPEN:
-  - check that it is signed by both of the channel's accounts
-  - save it and the closing time with the channel
+## - if the channel is OPEN:
+##   - check that the UpdateTx is signed by both of the channel's accounts
+
+##   - if the UpdateTx has a higher SequenceNumber than the channel's LastFullUpdateTx and ProposedUpdateTx
+##     - replace the ProposedUpdateTx
+
+## - if the channel is PENDING_CLOSED:
+##   - check that the LastFullUpdateTx is signed by both of the channel's accounts
+
+##   - if the channel does not have a LastFullUpdateTx or if peer's LastFullUpdateTx SequenceNumber is equal to or higher than the judge's own:
+##     - save the peer's LastFullUpdateTx with the channel, overwriting any existing LastFullUpdateTx
+
+
+*judge/peer/add_update_tx* - When a judge receives an UpdateTx:
+
+- if the channel is OPEN:
+  - check that the UpdateTx is signed by both of the channel's accounts
+
+  - if the UpdateTx has a higher SequenceNumber than the channel's LastFullUpdateTx and ProposedUpdateTx
+    - replace the ProposedUpdateTx
+
+
 
 - if the channel is PENDING_CLOSED:
   - check that the LastFullUpdateTx is signed by both of the channel's accounts
 
+  - save the UpdateTx with the channel as LastFullUpdateTx
   - if the channel does not have a LastFullUpdateTx or if peer's LastFullUpdateTx SequenceNumber is equal to or higher than the judge's own:
-    - save the peer's LastFullUpdateTx with the channel, overwriting any existing LastFullUpdateTx
 
+*judge/caller/accept_update_tx* -
+
+## *judge/caller/check_channel* - Is called by the judge caller to put the channel into HOLD or CLOSED depending on how long has gone
 
 *peer/caller/new_follow_on_tx* - When a peer wants to submit a follow-on tx:
 

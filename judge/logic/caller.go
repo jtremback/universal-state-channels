@@ -21,7 +21,7 @@ func (a *CallerAPI) ConfirmChannel(chID string) error {
 			return err
 		}
 
-		ch.OpeningTxEnvelope = ch.Judge.SignEnvelope(ch.OpeningTxEnvelope)
+		ch.OpeningTxEnvelope = ch.Judge.AppendSignature(ch.OpeningTxEnvelope)
 
 		access.SetChannel(tx, ch)
 		if err != nil {
@@ -41,7 +41,7 @@ func (a *CallerAPI) CloseChannel(chID string) error {
 			return err
 		}
 
-		ch.CloseChannel()
+		ch.AddUpdateTx()
 
 		access.SetChannel(tx, ch)
 		if err != nil {
