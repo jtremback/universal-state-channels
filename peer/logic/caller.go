@@ -8,13 +8,25 @@ import (
 	core "github.com/jtremback/usc/core/peer"
 	"github.com/jtremback/usc/core/wire"
 	"github.com/jtremback/usc/peer/access"
-	"github.com/jtremback/usc/peer/clients"
 )
 
 type CallerAPI struct {
-	DB             *bolt.DB
-	CounterpartyCl *clients.CounterpartyHTTP
-	JudgeCl        *clients.JudgeHTTP
+	DB                 *bolt.DB
+	CounterpartyClient CounterpartyClient
+	JudgeClient        JudgeClient
+}
+
+type JudgeClient interface {
+	GetFinalUpdateTx(string) (*wire.Envelope, error)
+	AddChannel(*wire.Envelope, string) error
+	AddCancellationTx(*wire.Envelope, string) error
+	AddUpdateTx(*wire.Envelope, string) error
+	AddFollowOnTx(*wire.Envelope, string) error
+}
+
+type CounterpartyClient interface {
+	AddChannel(*wire.Envelope, string) error
+	AddUpdateTx(*wire.Envelope, string) error
 }
 
 // ProposeChannel is called to propose a new channel. It creates and signs an
@@ -51,7 +63,7 @@ func (a *CallerAPI) ProposeChannel(state []byte, myPubkey []byte, theirPubkey []
 			return errors.New("server error")
 		}
 
-		err = a.CounterpartyCl.AddChannel(ev, cpt.Address)
+		err = a.CounterpartyClient.AddChannel(ev, cpt.Address)
 		if err != nil {
 			return err
 		}
@@ -89,7 +101,7 @@ func (a *CallerAPI) ConfirmChannel(channelID string) error {
 			return errors.New("database error")
 		}
 
-		err = a.JudgeCl.AddChannel(ch.OpeningTxEnvelope, ch.Judge.Address)
+		err = a.JudgeClient.AddChannel(ch.OpeningTxEnvelope, ch.Judge.Address)
 		if err != nil {
 			return err
 		}
@@ -150,7 +162,7 @@ func (a *CallerAPI) NewUpdateTx(state []byte, channelID string, fast bool) error
 
 		ch.SignProposedUpdateTx(ev, utx)
 
-		err = a.CounterpartyCl.AddChannel(ev, ch.Counterparty.Address)
+		err = a.CounterpartyClient.AddChannel(ev, ch.Counterparty.Address)
 		if err != nil {
 			return err
 		}
@@ -175,7 +187,7 @@ func (a *CallerAPI) ConfirmUpdateTx(channelID string) error {
 
 		ev := ch.CosignProposedUpdateTx()
 
-		err = a.CounterpartyCl.AddUpdateTx(ev, ch.Counterparty.Address)
+		err = a.CounterpartyClient.AddUpdateTx(ev, ch.Counterparty.Address)
 		if err != nil {
 			return err
 		}
@@ -200,7 +212,7 @@ func (a *CallerAPI) CheckFinalUpdateTx(channelID string) error {
 			return err
 		}
 
-		ev, err := a.JudgeCl.GetFinalUpdateTx(ch.Judge.Address)
+		ev, err := a.JudgeClient.GetFinalUpdateTx(ch.Judge.Address)
 		if err != nil {
 			return err
 		}
@@ -217,7 +229,7 @@ func (a *CallerAPI) CheckFinalUpdateTx(channelID string) error {
 		}
 
 		if newerUpdateTx != nil {
-			err = a.JudgeCl.AddUpdateTx(newerUpdateTx, ch.Judge.Address)
+			err = a.JudgeClient.AddUpdateTx(newerUpdateTx, ch.Judge.Address)
 			if err != nil {
 				return err
 			}

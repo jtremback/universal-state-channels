@@ -8,7 +8,6 @@ import (
 	"github.com/jtremback/usc/core/wire"
 	judgeLogic "github.com/jtremback/usc/judge/logic"
 	judgeServers "github.com/jtremback/usc/judge/servers"
-	peerClients "github.com/jtremback/usc/peer/clients"
 	peerLogic "github.com/jtremback/usc/peer/logic"
 	peerServers "github.com/jtremback/usc/peer/servers"
 )
@@ -23,36 +22,40 @@ type Judge struct {
 	PeerSrv   *judgeServers.PeerHTTP
 }
 
-type CounterpartyClientHarness struct {
+type CounterpartyClient struct {
 }
 
-type JudgeClientHarness struct {
+type JudgeClient struct {
 }
 
-func (a *JudgeClientHarness) AddChannel(ev *wire.Envelope, address string) error {
-	return a.sendEnvelope(ev, address+"/add_channel")
+func (a *JudgeClient) GetFinalUpdateTx(address string) (*wire.Envelope, error) {
+	return nil, nil
 }
 
-func (a *JudgeClientHarness) AddCancellationTx(ev *wire.Envelope, address string) error {
-	return a.sendEnvelope(ev, address+"/add_cancellation_tx")
+func (a *JudgeClient) AddChannel(ev *wire.Envelope, address string) error {
+	return nil
 }
 
-func (a *JudgeClientHarness) AddUpdateTx(ev *wire.Envelope, address string) error {
-	return a.sendEnvelope(ev, address+"/add_update_tx")
+func (a *JudgeClient) AddCancellationTx(ev *wire.Envelope, address string) error {
+	return nil
 }
 
-func (a *JudgeClientHarness) AddFollowOnTx(ev *wire.Envelope, address string) error {
-	return a.sendEnvelope(ev, address+"/add_follow_on_tx")
+func (a *JudgeClient) AddUpdateTx(ev *wire.Envelope, address string) error {
+	return nil
+}
+
+func (a *JudgeClient) AddFollowOnTx(ev *wire.Envelope, address string) error {
+	return nil
 }
 
 func createPeer(db *bolt.DB) *Peer {
-	counterpartyCl := &peerClients.CounterpartyHTTP{}
-	judgeCl := &peerClients.JudgeHTTP{}
+	cptCl := &CounterpartyClient{}
+	jdCl := &JudgeClient{}
 
 	callerAPI := &peerLogic.CallerAPI{
-		DB:             db,
-		CounterpartyCl: counterpartyCl,
-		JudgeCl:        judgeCl,
+		DB:                 db,
+		CounterpartyClient: cptCl,
+		JudgeClient:        jdCl,
 	}
 
 	callerSrv := &peerServers.CallerHTTP{
