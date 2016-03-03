@@ -2,6 +2,7 @@ package logic
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/boltdb/bolt"
 	"github.com/golang/protobuf/proto"
@@ -108,6 +109,11 @@ func (a *CallerAPI) ConfirmChannel(channelID string) error {
 
 		return nil
 	})
+}
+
+func (a *CallerAPI) ShitHammer() {
+	fmt.Println(a)
+	a.JudgeClient.GetFinalUpdateTx("fuck")
 }
 
 // OpenChannel is called on Channels which are in phase PENDING_OPEN. It checks

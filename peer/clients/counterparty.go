@@ -11,7 +11,7 @@ import (
 
 type CounterpartyHTTP struct{}
 
-func (a *CounterpartyHTTP) SendEnvelope(ev *wire.Envelope, address string) error {
+func (a *CounterpartyHTTP) sendEnvelope(ev *wire.Envelope, address string) error {
 	b, err := proto.Marshal(ev)
 
 	resp, err := http.Post(address, "application/octet-stream", bytes.NewReader(b))
@@ -28,9 +28,9 @@ func (a *CounterpartyHTTP) SendEnvelope(ev *wire.Envelope, address string) error
 }
 
 func (a *CounterpartyHTTP) AddChannel(ev *wire.Envelope, address string) error {
-	return a.SendEnvelope(ev, address+"/add_channel")
+	return a.sendEnvelope(ev, address+"/add_channel")
 }
 
 func (a *CounterpartyHTTP) AddUpdateTx(ev *wire.Envelope, address string) error {
-	return a.SendEnvelope(ev, address+"/add_update_tx")
+	return a.sendEnvelope(ev, address+"/add_update_tx")
 }

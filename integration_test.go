@@ -7,96 +7,58 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/jtremback/usc/core/wire"
 	judgeLogic "github.com/jtremback/usc/judge/logic"
-	judgeServers "github.com/jtremback/usc/judge/servers"
 	peerLogic "github.com/jtremback/usc/peer/logic"
-	peerServers "github.com/jtremback/usc/peer/servers"
 )
 
 type Peer struct {
-	CallerSrv       *peerServers.CallerHTTP
-	CounterpartySrv *peerServers.CounterpartyHTTP
+	CallerAPI       *peerLogic.CallerAPI
+	CounterpartyAPI *peerLogic.CounterpartyAPI
 }
 
 type Judge struct {
-	CallerSrv *judgeServers.CallerHTTP
-	PeerSrv   *judgeServers.PeerHTTP
+	CallerAPI *judgeLogic.CallerAPI
+	PeerAPI   *judgeLogic.PeerAPI
 }
 
 type CounterpartyClient struct {
+	Peer *Peer
+}
+
+func (a *CounterpartyClient) AddChannel(ev *wire.Envelope, address string) error {
+	return nil
+}
+
+func (a *CounterpartyClient) AddUpdateTx(ev *wire.Envelope, address string) error {
+	return nil
 }
 
 type JudgeClient struct {
+	Judge *Judge
 }
 
 func (a *JudgeClient) GetFinalUpdateTx(address string) (*wire.Envelope, error) {
+	fmt.Println("shibby")
 	return nil, nil
 }
 
 func (a *JudgeClient) AddChannel(ev *wire.Envelope, address string) error {
+	fmt.Println("shibby")
 	return nil
 }
 
 func (a *JudgeClient) AddCancellationTx(ev *wire.Envelope, address string) error {
+	fmt.Println("shibby")
 	return nil
 }
 
 func (a *JudgeClient) AddUpdateTx(ev *wire.Envelope, address string) error {
+	fmt.Println("shibby")
 	return nil
 }
 
 func (a *JudgeClient) AddFollowOnTx(ev *wire.Envelope, address string) error {
+	fmt.Println("shibby")
 	return nil
-}
-
-func createPeer(db *bolt.DB) *Peer {
-	cptCl := &CounterpartyClient{}
-	jdCl := &JudgeClient{}
-
-	callerAPI := &peerLogic.CallerAPI{
-		DB:                 db,
-		CounterpartyClient: cptCl,
-		JudgeClient:        jdCl,
-	}
-
-	callerSrv := &peerServers.CallerHTTP{
-		Logic: callerAPI,
-	}
-
-	counterpartyAPI := &peerLogic.CounterpartyAPI{
-		DB: db,
-	}
-
-	counterpartySrv := &peerServers.CounterpartyHTTP{
-		Logic: counterpartyAPI,
-	}
-
-	return &Peer{
-		CallerSrv:       callerSrv,
-		CounterpartySrv: counterpartySrv,
-	}
-}
-
-func createJudge(db *bolt.DB) *Judge {
-	callerAPI := &judgeLogic.CallerAPI{
-		DB: db,
-	}
-
-	callerSrv := &judgeServers.CallerHTTP{
-		Logic: callerAPI,
-	}
-
-	peerAPI := &judgeLogic.PeerAPI{
-		DB: db,
-	}
-
-	peerSrv := &judgeServers.PeerHTTP{
-		Logic: peerAPI,
-	}
-
-	return &Judge{
-		CallerSrv: callerSrv,
-		PeerSrv:   peerSrv,
-	}
 }
 
 func TestIntegration(t *testing.T) {
@@ -118,9 +80,46 @@ func TestIntegration(t *testing.T) {
 	}
 	defer jDB.Close()
 
-	p1 := createPeer(p1DB)
-	p2 := createPeer(p2DB)
-	j := createPeer(jDB)
+	p1 := &Peer{
+		CallerAPI: &peerLogic.CallerAPI{
+			DB: p1DB,
+		},
+		CounterpartyAPI: &peerLogic.CounterpartyAPI{
+			DB: p1DB,
+		},
+	}
+	p2 := &Peer{
+		CallerAPI: &peerLogic.CallerAPI{
+			DB: p2DB,
+		},
+		CounterpartyAPI: &peerLogic.CounterpartyAPI{
+			DB: p2DB,
+		},
+	}
+	j := &Judge{
+		CallerAPI: &judgeLogic.CallerAPI{
+			DB: jDB,
+		},
+		PeerAPI: &judgeLogic.PeerAPI{
+			DB: jDB,
+		},
+	}
+
+	p1.CallerAPI.JudgeClient = &JudgeClient{
+		Judge: j,
+	}
+	p1.CallerAPI.CounterpartyClient = &CounterpartyClient{
+		Peer: p2,
+	}
+
+	p2.CallerAPI.JudgeClient = &JudgeClient{
+		Judge: j,
+	}
+	p2.CallerAPI.CounterpartyClient = &CounterpartyClient{
+		Peer: p1,
+	}
+
+	p1.CallerAPI.ShitHammer()
 
 	fmt.Println(p1, p2, j)
 }
