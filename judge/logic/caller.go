@@ -12,6 +12,65 @@ type CallerAPI struct {
 	DB *bolt.DB
 }
 
+func (a *CallerAPI) NewJudge(
+	name string,
+	judge []byte,
+) (*core.Judge, error) {
+	var err error
+	jd := &core.Judge{}
+	a.DB.Update(func(tx *bolt.Tx) error {
+		jd, err := access.GetJudge(tx, judge)
+		if err != nil {
+			return err
+		}
+
+		jd, err = core.NewJudge(name)
+		if err != nil {
+			return err
+		}
+
+		err = access.SetJudge(tx, jd)
+		if err != nil {
+			return errors.New("database error")
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return jd, nil
+}
+
+func (a *CallerAPI) AddAccount(
+	name string,
+	judge []byte,
+	pubkey []byte,
+	address string,
+) error {
+	return a.DB.Update(func(tx *bolt.Tx) error {
+		jd, err := access.GetJudge(tx, judge)
+		if err != nil {
+			return err
+		}
+
+		acct := &core.Account{
+			Name:    name,
+			Judge:   jd,
+			Pubkey:  pubkey,
+			Address: address,
+		}
+
+		err = access.SetAccount(tx, acct)
+		if err != nil {
+			return errors.New("database error")
+		}
+
+		return nil
+	})
+}
+
 func (a *CallerAPI) ConfirmChannel(chID string) error {
 	var err error
 	return a.DB.Update(func(tx *bolt.Tx) error {

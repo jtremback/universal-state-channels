@@ -88,7 +88,7 @@ type Judge struct {
 }
 
 // NewJudge makes a new judge
-func NewJudge(name string, address string) (*Judge, error) {
+func NewJudge(name string) (*Judge, error) {
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		return nil, err
