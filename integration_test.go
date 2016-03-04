@@ -121,5 +121,7 @@ func TestIntegration(t *testing.T) {
 
 	p1.CallerAPI.ShitHammer()
 
+	p1.CallerAPI.ProposeChannel([]byte{20}, myPubkey, theirPubkey, holdPeriod)
+
 	fmt.Println(p1, p2, j)
 }

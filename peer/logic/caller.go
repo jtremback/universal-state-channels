@@ -30,6 +30,114 @@ type CounterpartyClient interface {
 	AddUpdateTx(*wire.Envelope, string) error
 }
 
+func (a *CallerAPI) NewAccount(
+	name string,
+	judge []byte,
+) (*core.Account, error) {
+	var err error
+	acct := &core.Account{}
+	a.DB.Update(func(tx *bolt.Tx) error {
+		jd, err := access.GetJudge(tx, judge)
+		if err != nil {
+			return err
+		}
+
+		acct, err = core.NewAccount(name, jd)
+		if err != nil {
+			return err
+		}
+
+		err = access.SetAccount(tx, acct)
+		if err != nil {
+			return errors.New("database error")
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return acct, nil
+}
+
+func (a *CallerAPI) AddAccount(
+	name string,
+	judge []byte,
+	pubkey []byte,
+	privkey []byte,
+) error {
+	return a.DB.Update(func(tx *bolt.Tx) error {
+		jd, err := access.GetJudge(tx, judge)
+		if err != nil {
+			return err
+		}
+
+		acct := &core.Account{
+			Name:    name,
+			Judge:   jd,
+			Pubkey:  pubkey,
+			Privkey: privkey,
+		}
+
+		err = access.SetAccount(tx, acct)
+		if err != nil {
+			return errors.New("database error")
+		}
+
+		return nil
+	})
+}
+
+func (a *CallerAPI) AddCounterparty(
+	name string,
+	judge []byte,
+	pubkey []byte,
+	address string,
+) error {
+	return a.DB.Update(func(tx *bolt.Tx) error {
+		jd, err := access.GetJudge(tx, judge)
+		if err != nil {
+			return err
+		}
+
+		cpt := &core.Counterparty{
+			Name:    name,
+			Judge:   jd,
+			Pubkey:  pubkey,
+			Address: address,
+		}
+
+		err = access.SetCounterparty(tx, cpt)
+		if err != nil {
+			return errors.New("database error")
+		}
+
+		return nil
+	})
+}
+
+func (a *CallerAPI) AddJudge(
+	name string,
+	pubkey []byte,
+	address string,
+) error {
+	return a.DB.Update(func(tx *bolt.Tx) error {
+		jd := &core.Judge{
+			Name:    name,
+			Pubkey:  pubkey,
+			Address: address,
+		}
+
+		err := access.SetJudge(tx, jd)
+		if err != nil {
+			return errors.New("database error")
+		}
+
+		return nil
+	})
+}
+
 // ProposeChannel is called to propose a new channel. It creates and signs an
 // OpeningTx, sends it to the Counterparty and saves it in a new Channel.
 func (a *CallerAPI) ProposeChannel(state []byte, myPubkey []byte, theirPubkey []byte, holdPeriod uint32) error {
@@ -69,7 +177,7 @@ func (a *CallerAPI) ProposeChannel(state []byte, myPubkey []byte, theirPubkey []
 			return err
 		}
 
-		access.SetChannel(tx, ch)
+		err = access.SetChannel(tx, ch)
 		if err != nil {
 			return errors.New("database error")
 		}
@@ -97,7 +205,7 @@ func (a *CallerAPI) ConfirmChannel(channelID string) error {
 
 		ch.Account.AppendSignature(ch.OpeningTxEnvelope)
 
-		access.SetChannel(tx, ch)
+		err = access.SetChannel(tx, ch)
 		if err != nil {
 			return errors.New("database error")
 		}
@@ -139,7 +247,7 @@ func (a *CallerAPI) OpenChannel(ev *wire.Envelope) error {
 			return err
 		}
 
-		access.SetChannel(tx, ch)
+		err = access.SetChannel(tx, ch)
 		if err != nil {
 			return errors.New("database error")
 		}
@@ -173,7 +281,7 @@ func (a *CallerAPI) NewUpdateTx(state []byte, channelID string, fast bool) error
 			return err
 		}
 
-		access.SetChannel(tx, ch)
+		err = access.SetChannel(tx, ch)
 		if err != nil {
 			return errors.New("database error")
 		}
@@ -198,7 +306,7 @@ func (a *CallerAPI) ConfirmUpdateTx(channelID string) error {
 			return err
 		}
 
-		access.SetChannel(tx, ch)
+		err = access.SetChannel(tx, ch)
 		if err != nil {
 			return errors.New("database error")
 		}
@@ -241,7 +349,7 @@ func (a *CallerAPI) CheckFinalUpdateTx(channelID string) error {
 			}
 		}
 
-		access.SetChannel(tx, ch)
+		err = access.SetChannel(tx, ch)
 		if err != nil {
 			return errors.New("database error")
 		}
