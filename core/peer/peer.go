@@ -98,7 +98,7 @@ type Judge struct {
 	Address string
 }
 
-func NewAccount(name string, address string, ep *Judge) (*Account, error) {
+func NewAccount(name string, jd *Judge) (*Account, error) {
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		return nil, err
@@ -106,7 +106,7 @@ func NewAccount(name string, address string, ep *Judge) (*Account, error) {
 
 	return &Account{
 		Name:    name,
-		Judge:   ep,
+		Judge:   jd,
 		Pubkey:  pub[:],
 		Privkey: priv[:],
 	}, nil
