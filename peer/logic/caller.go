@@ -141,16 +141,13 @@ func (a *CallerAPI) AddJudge(
 // ProposeChannel is called to propose a new channel. It creates and signs an
 // OpeningTx, sends it to the Counterparty and saves it in a new Channel.
 func (a *CallerAPI) ProposeChannel(state []byte, myPubkey []byte, theirPubkey []byte, holdPeriod uint32) error {
-	var err error
-	cpt := &core.Counterparty{}
-	acct := &core.Account{}
-	err = a.DB.Update(func(tx *bolt.Tx) error {
-		acct, err = access.GetAccount(tx, myPubkey)
+	return a.DB.Update(func(tx *bolt.Tx) error {
+		acct, err := access.GetAccount(tx, myPubkey)
 		if err != nil {
 			return err
 		}
 
-		cpt, err = access.GetCounterparty(tx, theirPubkey)
+		cpt, err := access.GetCounterparty(tx, theirPubkey)
 		if err != nil {
 			return err
 		}
@@ -184,11 +181,6 @@ func (a *CallerAPI) ProposeChannel(state []byte, myPubkey []byte, theirPubkey []
 
 		return nil
 	})
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // ConfirmChannel is called on Channels which are in phase PENDING_OPEN. It signs

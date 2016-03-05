@@ -138,12 +138,22 @@ func TestIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	p2.CallerAPI.AddJudge(jd1.Name, jd1.Pubkey, "https://judge.com/")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	acct1, err := p1.CallerAPI.NewAccount("acct1", jd1.Pubkey)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// p1.CallerAPI.ProposeChannel([]byte{20}, myPubkey, theirPubkey, holdPeriod)
+	acct2, err := p1.CallerAPI.NewAccount("acct2", jd1.Pubkey)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	p1.CallerAPI.ProposeChannel([]byte{20}, acct1.Pubkey, acct2.Pubkey, 23)
 
 	fmt.Println(acct1)
 }
