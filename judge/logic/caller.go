@@ -14,16 +14,10 @@ type CallerAPI struct {
 
 func (a *CallerAPI) NewJudge(
 	name string,
-	judge []byte,
 ) (*core.Judge, error) {
 	var err error
 	jd := &core.Judge{}
 	a.DB.Update(func(tx *bolt.Tx) error {
-		jd, err := access.GetJudge(tx, judge)
-		if err != nil {
-			return err
-		}
-
 		jd, err = core.NewJudge(name)
 		if err != nil {
 			return err

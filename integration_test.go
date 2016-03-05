@@ -2,11 +2,14 @@ package test
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/boltdb/bolt"
 	"github.com/jtremback/usc/core/wire"
+	judgeAccess "github.com/jtremback/usc/judge/access"
 	judgeLogic "github.com/jtremback/usc/judge/logic"
+	peerAccess "github.com/jtremback/usc/peer/access"
 	peerLogic "github.com/jtremback/usc/peer/logic"
 )
 
@@ -64,21 +67,27 @@ func (a *JudgeClient) AddFollowOnTx(ev *wire.Envelope, address string) error {
 func TestIntegration(t *testing.T) {
 	p1DB, err := bolt.Open("/tmp/p1.db", 0600, nil)
 	if err != nil {
-		fmt.Println(err)
+		t.Fatal(err)
 	}
+	peerAccess.MakeBuckets(p1DB)
 	defer p1DB.Close()
+	defer os.Remove("/tmp/p1.db")
 
 	p2DB, err := bolt.Open("/tmp/p2.db", 0600, nil)
 	if err != nil {
-		fmt.Println(err)
+		t.Fatal(err)
 	}
+	peerAccess.MakeBuckets(p2DB)
 	defer p2DB.Close()
+	defer os.Remove("/tmp/p2.db")
 
 	jDB, err := bolt.Open("/tmp/j.db", 0600, nil)
 	if err != nil {
-		fmt.Println(err)
+		t.Fatal(err)
 	}
+	judgeAccess.MakeBuckets(jDB)
 	defer jDB.Close()
+	defer os.Remove("/tmp/j.db")
 
 	p1 := &Peer{
 		CallerAPI: &peerLogic.CallerAPI{
@@ -119,9 +128,22 @@ func TestIntegration(t *testing.T) {
 		Peer: p1,
 	}
 
-	p1.CallerAPI.ShitHammer()
+	jd1, err := j.CallerAPI.NewJudge("jd1")
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	p1.CallerAPI.ProposeChannel([]byte{20}, myPubkey, theirPubkey, holdPeriod)
+	p1.CallerAPI.AddJudge(jd1.Name, jd1.Pubkey, "https://judge.com/")
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	fmt.Println(p1, p2, j)
+	acct1, err := p1.CallerAPI.NewAccount("acct1", jd1.Pubkey)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// p1.CallerAPI.ProposeChannel([]byte{20}, myPubkey, theirPubkey, holdPeriod)
+
+	fmt.Println(acct1)
 }
