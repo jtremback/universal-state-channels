@@ -50,11 +50,8 @@ func SetJudge(tx *bolt.Tx, jd *core.Judge) error {
 
 func GetJudge(tx *bolt.Tx, key []byte) (*core.Judge, error) {
 	jd := &core.Judge{}
-	err := json.Unmarshal(tx.Bucket([]byte("Accounts")).Get(key), jd)
+	err := json.Unmarshal(tx.Bucket([]byte("Judges")).Get(key), jd)
 	if err != nil {
-		return nil, errors.New("database error")
-	}
-	if jd == nil {
 		return nil, errors.New("judge not found")
 	}
 
@@ -91,11 +88,9 @@ func GetAccount(tx *bolt.Tx, key []byte) (*core.Account, error) {
 	acct := &core.Account{}
 	err := json.Unmarshal(tx.Bucket([]byte("Accounts")).Get(key), acct)
 	if err != nil {
-		return nil, errors.New("database error")
+		return nil, errors.New("judge not found")
 	}
-	if acct == nil {
-		return nil, errors.New("account not found")
-	}
+
 	err = PopulateAccount(tx, acct)
 	if err != nil {
 		return nil, errors.New("database error")
@@ -144,11 +139,9 @@ func GetCounterparty(tx *bolt.Tx, key []byte) (*core.Counterparty, error) {
 	cpt := &core.Counterparty{}
 	err := json.Unmarshal(tx.Bucket([]byte("Counterparties")).Get(key), cpt)
 	if err != nil {
-		return nil, errors.New("database error")
+		return nil, errors.New("counterparty not found")
 	}
-	if cpt == nil {
-		return nil, errors.New("account not found")
-	}
+
 	err = PopulateCounterparty(tx, cpt)
 	if err != nil {
 		return nil, errors.New("database error")
@@ -226,11 +219,9 @@ func GetChannel(tx *bolt.Tx, key string) (*core.Channel, error) {
 	ch := &core.Channel{}
 	err := json.Unmarshal(tx.Bucket([]byte("Channels")).Get([]byte(key)), ch)
 	if err != nil {
-		return nil, errors.New("database error")
-	}
-	if ch == nil {
 		return nil, errors.New("channel not found")
 	}
+
 	err = PopulateChannel(tx, ch)
 	if err != nil {
 		return nil, errors.New("database error")
