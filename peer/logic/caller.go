@@ -35,7 +35,7 @@ func (a *CallerAPI) NewAccount(
 ) (*core.Account, error) {
 	var err error
 	acct := &core.Account{}
-	a.DB.Update(func(tx *bolt.Tx) error {
+	err = a.DB.Update(func(tx *bolt.Tx) error {
 		jd, err := access.GetJudge(tx, judge)
 		if err != nil {
 			return err
@@ -45,7 +45,6 @@ func (a *CallerAPI) NewAccount(
 		if err != nil {
 			return err
 		}
-
 		err = access.SetAccount(tx, acct)
 		if err != nil {
 			return errors.New("database error")
@@ -139,8 +138,14 @@ func (a *CallerAPI) AddJudge(
 
 // ProposeChannel is called to propose a new channel. It creates and signs an
 // OpeningTx, sends it to the Counterparty and saves it in a new Channel.
-func (a *CallerAPI) ProposeChannel(state []byte, myPubkey []byte, theirPubkey []byte, holdPeriod uint32) error {
-	return a.DB.Update(func(tx *bolt.Tx) error {
+func (a *CallerAPI) ProposeChannel(
+	state []byte,
+	myPubkey []byte,
+	theirPubkey []byte,
+	holdPeriod uint32,
+) (*core.Channel, error) {
+	ch := &core.Channel{}
+	err := a.DB.Update(func(tx *bolt.Tx) error {
 		acct, err := access.GetAccount(tx, myPubkey)
 		if err != nil {
 			return err
@@ -163,7 +168,7 @@ func (a *CallerAPI) ProposeChannel(state []byte, myPubkey []byte, theirPubkey []
 
 		acct.AppendSignature(ev)
 
-		ch, err := core.NewChannel(ev, otx, acct, cpt)
+		ch, err = core.NewChannel(ev, otx, acct, cpt)
 		if err != nil {
 			return errors.New("server error")
 		}
@@ -180,6 +185,11 @@ func (a *CallerAPI) ProposeChannel(state []byte, myPubkey []byte, theirPubkey []
 
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	return ch, nil
 }
 
 // ConfirmChannel is called on Channels which are in phase PENDING_OPEN. It signs
