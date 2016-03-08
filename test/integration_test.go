@@ -26,18 +26,29 @@ type Judge struct {
 
 type CounterpartyClient struct {
 	Peer *Peer
+	T    *testing.T
 }
 
-func (a *CounterpartyClient) AddChannel(ev *wire.Envelope, address string) error {
+func (client *CounterpartyClient) AddChannel(ev *wire.Envelope, address string) error {
+	fmt.Println("shibby")
+	err := client.Peer.CounterpartyAPI.AddChannel(ev)
+	if err != nil {
+		client.T.Fatal(err)
+	}
 	return nil
 }
 
-func (a *CounterpartyClient) AddUpdateTx(ev *wire.Envelope, address string) error {
+func (client *CounterpartyClient) AddUpdateTx(ev *wire.Envelope, address string) error {
+	err := client.Peer.CounterpartyAPI.AddUpdateTx(ev)
+	if err != nil {
+		client.T.Fatal(err)
+	}
 	return nil
 }
 
 type JudgeClient struct {
 	Judge *Judge
+	T     *testing.T
 }
 
 func (a *JudgeClient) GetFinalUpdateTx(address string) (*wire.Envelope, error) {
@@ -117,16 +128,20 @@ func TestIntegration(t *testing.T) {
 
 	p1.CallerAPI.JudgeClient = &JudgeClient{
 		Judge: j,
+		T:     t,
 	}
 	p1.CallerAPI.CounterpartyClient = &CounterpartyClient{
 		Peer: p2,
+		T:    t,
 	}
 
 	p2.CallerAPI.JudgeClient = &JudgeClient{
 		Judge: j,
+		T:     t,
 	}
 	p2.CallerAPI.CounterpartyClient = &CounterpartyClient{
 		Peer: p1,
+		T:    t,
 	}
 
 	jd1, err := j.CallerAPI.NewJudge("jd1")
@@ -164,12 +179,12 @@ func TestIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ch, err := p1.CallerAPI.ProposeChannel([]byte{20}, acct1.Pubkey, acct2.Pubkey, 23)
+	ch, err := p1.CallerAPI.ProposeChannel("shibby", []byte{20}, acct1.Pubkey, acct2.Pubkey, 23)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = p1.CallerAPI.ConfirmChannel(ch.ChannelId)
+	err = p2.CallerAPI.ConfirmChannel(ch.ChannelId)
 	if err != nil {
 		t.Fatal(err)
 	}

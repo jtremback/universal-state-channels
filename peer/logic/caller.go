@@ -158,6 +158,7 @@ func (a *CallerAPI) ViewChannels() ([]*core.Channel, error) {
 // ProposeChannel is called to propose a new channel. It creates and signs an
 // OpeningTx, sends it to the Counterparty and saves it in a new Channel.
 func (a *CallerAPI) ProposeChannel(
+    channelId string,
 	state []byte,
 	myPubkey []byte,
 	theirPubkey []byte,
@@ -175,7 +176,7 @@ func (a *CallerAPI) ProposeChannel(
 			return err
 		}
 
-		otx, err := acct.NewOpeningTx(cpt, state, holdPeriod)
+		otx, err := acct.NewOpeningTx(channelId, cpt, state, holdPeriod)
 		if err != nil {
 			return errors.New("server error")
 		}

@@ -3,7 +3,6 @@ package peer
 import (
 	"bytes"
 	"crypto/rand"
-	"encoding/base64"
 	"errors"
 	"io"
 
@@ -113,16 +112,11 @@ func NewAccount(name string, jd *Judge) (*Account, error) {
 	}, nil
 }
 
-func (acct *Account) NewOpeningTx(cpt *Counterparty, state []byte, holdPeriod uint32) (*wire.OpeningTx, error) {
-	b, err := randomBytes(32)
-	chID := base64.URLEncoding.EncodeToString(b)
-	if err != nil {
-		return nil, err
-	}
+func (acct *Account) NewOpeningTx(channelId string, cpt *Counterparty, state []byte, holdPeriod uint32) (*wire.OpeningTx, error) {
 	pubkeys := [][]byte{acct.Pubkey, cpt.Pubkey}
 
 	return &wire.OpeningTx{
-		ChannelId:  chID,
+		ChannelId:  channelId,
 		Pubkeys:    pubkeys,
 		State:      state,
 		HoldPeriod: holdPeriod,

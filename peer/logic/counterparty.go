@@ -2,6 +2,7 @@ package logic
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/boltdb/bolt"
 	"github.com/golang/protobuf/proto"
@@ -26,8 +27,12 @@ func (a *CounterpartyAPI) AddChannel(ev *wire.Envelope) error {
 	acct := &core.Account{}
 	cpt := &core.Counterparty{}
 	err = a.DB.Update(func(tx *bolt.Tx) error {
-		_, err = access.GetChannel(tx, otx.ChannelId)
+		ch, err := access.GetChannel(tx, otx.ChannelId)
 		if err != nil {
+			return err
+		}
+		if ch != nil {
+			fmt.Println(err, ch)
 			return errors.New("channel already exists")
 		}
 
@@ -46,7 +51,7 @@ func (a *CounterpartyAPI) AddChannel(ev *wire.Envelope) error {
 			return err
 		}
 
-		ch, err := core.NewChannel(ev, otx, acct, cpt)
+		ch, err = core.NewChannel(ev, otx, acct, cpt)
 		if err != nil {
 			return err
 		}

@@ -25,6 +25,7 @@ func (a *CallerHTTP) proposeChannel(w http.ResponseWriter, r *http.Request) {
 	}
 
 	req := &struct {
+		ChannelId          string
 		State              []byte
 		AccountPubkey      []byte
 		CounterpartyPubkey []byte
@@ -35,7 +36,7 @@ func (a *CallerHTTP) proposeChannel(w http.ResponseWriter, r *http.Request) {
 		a.fail(w, "body parsing error", 500)
 	}
 
-	err = a.Logic.ProposeChannel(req.State, req.AccountPubkey, req.CounterpartyPubkey, req.HoldPeriod)
+	_, err = a.Logic.ProposeChannel(req.ChannelId, req.State, req.AccountPubkey, req.CounterpartyPubkey, req.HoldPeriod)
 	if err != nil {
 		a.fail(w, err.Error(), 500)
 	}

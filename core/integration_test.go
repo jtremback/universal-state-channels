@@ -68,7 +68,7 @@ var c2_Counterparty = &c.Counterparty{
 }
 
 func Test(t *testing.T) {
-	otx, err := c1_Account.NewOpeningTx(c1_Counterparty, []byte{166, 179}, 86400)
+	otx, err := c1_Account.NewOpeningTx("shibby", c1_Counterparty, []byte{166, 179}, 86400)
 	if err != nil {
 		t.Fatal(err)
 	}
