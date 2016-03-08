@@ -1,7 +1,6 @@
 package access
 
 import (
-	"encoding/json"
 	"os"
 	"reflect"
 	"testing"
@@ -11,7 +10,7 @@ import (
 	"github.com/jtremback/usc/core/wire"
 )
 
-func TestSetJudge(t *testing.T) {
+func TestJudge(t *testing.T) {
 	db, err := bolt.Open("/tmp/test.db", 0600, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -29,30 +28,30 @@ func TestSetJudge(t *testing.T) {
 		Pubkey:  []byte{40, 40, 40},
 		Address: "stoops.com:3004",
 	}
-	ju2 := &core.Judge{}
 
 	db.Update(func(tx *bolt.Tx) error {
 		err := SetJudge(tx, jd)
 		if err != nil {
 			t.Fatal(err)
 		}
+
 		return nil
 	})
 
 	db.View(func(tx *bolt.Tx) error {
-		err := json.Unmarshal(tx.Bucket([]byte("Judges")).Get(jd.Pubkey), ju2)
+		jd2, err := GetJudge(tx, jd.Pubkey)
 		if err != nil {
 			t.Fatal(err)
 		}
+
+		if !reflect.DeepEqual(jd, jd2) {
+			t.Fatal("Account incorrect")
+		}
 		return nil
 	})
-
-	if !reflect.DeepEqual(jd, ju2) {
-		t.Fatal("structs not equal :(")
-	}
 }
 
-func TestSetMyAccount(t *testing.T) {
+func TestAccount(t *testing.T) {
 	db, err := bolt.Open("/tmp/test.db", 0600, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -76,90 +75,51 @@ func TestSetMyAccount(t *testing.T) {
 		},
 	}
 
+	jd := &core.Judge{
+		Name:    "joe",
+		Pubkey:  []byte{40, 40, 40},
+		Address: "stoops.com:3004",
+	}
+
 	db.Update(func(tx *bolt.Tx) error {
 		err := SetAccount(tx, acct)
 		if err != nil {
 			t.Fatal(err)
 		}
+
+		err = SetJudge(tx, jd)
+		if err != nil {
+			t.Fatal(err)
+		}
+
 		return nil
 	})
 
+	acct.Judge = jd
+
 	db.View(func(tx *bolt.Tx) error {
-		acct2 := &core.Account{}
-		json.Unmarshal(tx.Bucket([]byte("Accounts")).Get(acct.Pubkey), acct2)
+		acct2, err := GetAccount(tx, acct.Pubkey)
+		if err != nil {
+			t.Fatal(err)
+		}
+
 		if !reflect.DeepEqual(acct, acct2) {
-			t.Fatal("MyAccount incorrect")
+			t.Fatal("Account incorrect")
 		}
 
-		fromDB := tx.Bucket([]byte("Judges")).Get(acct.Judge.Pubkey)
-		jd := &core.Judge{}
-		json.Unmarshal(fromDB, jd)
-
-		if !reflect.DeepEqual(acct.Judge, jd) {
-			t.Fatal("Judge incorrect", acct.Judge, jd, string(tx.Bucket([]byte("Judges")).Get(acct.Judge.Pubkey)))
+		fooba, err := GetAccount(tx, []byte("fooba"))
+		if err != nil {
+			t.Fatal(err)
 		}
+		if fooba != nil {
+			t.Fatal("nonexistant counterparty should be nil")
+		}
+
 		return nil
 	})
 }
 
-func TestPopulateMyAccount(t *testing.T) {
-	db, err := bolt.Open("/tmp/test.db", 0600, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer db.Close()
-	defer os.Remove("/tmp/test.db")
-
-	err = MakeBuckets(db)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	acct := &core.Account{
-		Name:    "boogie",
-		Privkey: []byte{30, 30, 30},
-		Pubkey:  []byte{40, 40, 40},
-		Judge: &core.Judge{
-			Name:    "wrong",
-			Pubkey:  []byte{40, 40, 40},
-			Address: "stoops.com:3004",
-		},
-	}
-
-	jd := &core.Judge{
-		Name:    "joe",
-		Pubkey:  []byte{40, 40, 40},
-		Address: "stoops.com:3004",
-	}
-
-	db.Update(func(tx *bolt.Tx) error {
-		err := SetAccount(tx, acct)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		err = SetJudge(tx, jd)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		return nil
-	})
-
-	db.View(func(tx *bolt.Tx) error {
-		err := PopulateAccount(tx, acct)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if !reflect.DeepEqual(acct.Judge, jd) {
-			t.Fatal("Judge incorrect", acct.Judge, jd)
-		}
-		return nil
-	})
-}
-
-func TestSetTheirAccount(t *testing.T) {
+func TestCounterparty(t *testing.T) {
 	db, err := bolt.Open("/tmp/test.db", 0600, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -182,89 +142,51 @@ func TestSetTheirAccount(t *testing.T) {
 		},
 	}
 
+	jd := &core.Judge{
+		Name:    "joe",
+		Pubkey:  []byte{40, 40, 40},
+		Address: "stoops.com:3004",
+	}
+
 	db.Update(func(tx *bolt.Tx) error {
 		err := SetCounterparty(tx, cpt)
 		if err != nil {
 			t.Fatal(err)
 		}
+
+		err = SetJudge(tx, jd)
+		if err != nil {
+			t.Fatal(err)
+		}
+
 		return nil
 	})
 
+	cpt.Judge = jd
+
 	db.View(func(tx *bolt.Tx) error {
-		cpt2 := &core.Counterparty{}
-		json.Unmarshal(tx.Bucket([]byte("Counterparties")).Get(cpt.Pubkey), cpt2)
+		cpt2, err := GetCounterparty(tx, cpt.Pubkey)
+		if err != nil {
+			t.Fatal(err)
+		}
+
 		if !reflect.DeepEqual(cpt, cpt2) {
-			t.Fatal("TheirAccount incorrect")
+			t.Fatal("Counterparty incorrect")
 		}
 
-		fromDB := tx.Bucket([]byte("Judges")).Get(cpt.Judge.Pubkey)
-		jd := &core.Judge{}
-		json.Unmarshal(fromDB, jd)
-
-		if !reflect.DeepEqual(cpt.Judge, jd) {
-			t.Fatal("Judge incorrect", cpt.Judge, jd, string(tx.Bucket([]byte("Judges")).Get(cpt.Judge.Pubkey)))
+		fooba, err := GetCounterparty(tx, []byte("fooba"))
+		if err != nil {
+			t.Fatal(err)
 		}
+		if fooba != nil {
+			t.Fatal("nonexistant counterparty should be nil")
+		}
+
 		return nil
 	})
 }
 
-func TestPopulateTheirAccount(t *testing.T) {
-	db, err := bolt.Open("/tmp/test.db", 0600, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer db.Close()
-	defer os.Remove("/tmp/test.db")
-
-	err = MakeBuckets(db)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	cpt := &core.Counterparty{
-		Name:   "boogie",
-		Pubkey: []byte{40, 40, 40},
-		Judge: &core.Judge{
-			Name:    "wrong",
-			Pubkey:  []byte{40, 40, 40},
-			Address: "stoops.com:3004",
-		},
-	}
-
-	jd := &core.Judge{
-		Name:    "joe",
-		Pubkey:  []byte{40, 40, 40},
-		Address: "stoops.com:3004",
-	}
-
-	db.Update(func(tx *bolt.Tx) error {
-		err := SetCounterparty(tx, cpt)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		err = SetJudge(tx, jd)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		return nil
-	})
-
-	db.View(func(tx *bolt.Tx) error {
-		err := PopulateCounterparty(tx, cpt)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if !reflect.DeepEqual(cpt.Judge, jd) {
-			t.Fatal("Judge incorrect", cpt.Judge, jd)
-		}
-		return nil
-	})
-}
-
-func TestSetChannel(t *testing.T) {
+func TestChannel(t *testing.T) {
 	db, err := bolt.Open("/tmp/test.db", 0600, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -284,113 +206,17 @@ func TestSetChannel(t *testing.T) {
 		OpeningTx:         &wire.OpeningTx{},
 		OpeningTxEnvelope: &wire.Envelope{},
 
-		ProposedUpdateTx:         &wire.UpdateTx{},
-		ProposedUpdateTxEnvelope: &wire.Envelope{},
+		MyProposedUpdateTx:         &wire.UpdateTx{},
+		MyProposedUpdateTxEnvelope: &wire.Envelope{},
+
+		TheirProposedUpdateTx:         &wire.UpdateTx{},
+		TheirProposedUpdateTxEnvelope: &wire.Envelope{},
 
 		LastFullUpdateTx:         &wire.UpdateTx{},
 		LastFullUpdateTxEnvelope: &wire.Envelope{},
 
 		Me:          0,
-		FollowOnTxs: [][]byte{[]byte{80, 80}},
-
-		Judge: &core.Judge{
-			Name:    "wrong",
-			Pubkey:  []byte{40, 40, 40},
-			Address: "stoops.com:3004",
-		},
-
-		Account: &core.Account{
-			Name:    "wrong",
-			Pubkey:  []byte{40, 40, 40},
-			Privkey: []byte{40, 40, 40},
-			Judge: &core.Judge{
-				Name:    "wrong",
-				Pubkey:  []byte{40, 40, 40},
-				Address: "stoops.com:3004",
-			},
-		},
-
-		Counterparty: &core.Counterparty{
-			Name:    "wrong",
-			Pubkey:  []byte{40, 40, 40},
-			Address: "stoops.com:3004",
-			Judge: &core.Judge{
-				Name:    "wrong",
-				Pubkey:  []byte{40, 40, 40},
-				Address: "stoops.com:3004",
-			},
-		},
-	}
-
-	db.Update(func(tx *bolt.Tx) error {
-		err := SetChannel(tx, ch)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return nil
-	})
-
-	db.View(func(tx *bolt.Tx) error {
-		ch2 := &core.Channel{}
-		json.Unmarshal(tx.Bucket([]byte("Channels")).Get([]byte(ch.ChannelId)), ch2)
-		if !reflect.DeepEqual(ch, ch2) {
-			t.Fatal("Channel incorrect")
-		}
-		juJson := tx.Bucket([]byte("Judges")).Get(ch.Judge.Pubkey)
-		jd := &core.Judge{}
-		json.Unmarshal(juJson, jd)
-
-		if !reflect.DeepEqual(ch.Judge, jd) {
-			t.Fatal("Judge incorrect")
-		}
-
-		maJson := tx.Bucket([]byte("Accounts")).Get(ch.Account.Pubkey)
-		acct := &core.Account{}
-		json.Unmarshal(maJson, acct)
-
-		if !reflect.DeepEqual(ch.Account, acct) {
-			t.Fatal("MyAccount incorrect")
-		}
-
-		taJson := tx.Bucket([]byte("Counterparties")).Get(ch.Counterparty.Pubkey)
-		cpt := &core.Counterparty{}
-		json.Unmarshal(taJson, cpt)
-
-		if !reflect.DeepEqual(ch.Counterparty, cpt) {
-			t.Fatal("TheirAccount incorrect")
-		}
-		return nil
-	})
-}
-
-func TestPopulateChannel(t *testing.T) {
-	db, err := bolt.Open("/tmp/test.db", 0600, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer db.Close()
-	defer os.Remove("/tmp/test.db")
-
-	err = MakeBuckets(db)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ch := &core.Channel{
-		ChannelId: "xyz23",
-		Phase:     2,
-
-		OpeningTx:         &wire.OpeningTx{},
-		OpeningTxEnvelope: &wire.Envelope{},
-
-		ProposedUpdateTx:         &wire.UpdateTx{},
-		ProposedUpdateTxEnvelope: &wire.Envelope{},
-
-		LastFullUpdateTx:         &wire.UpdateTx{},
-		LastFullUpdateTxEnvelope: &wire.Envelope{},
-
-		Me:          0,
-		FollowOnTxs: [][]byte{[]byte{80, 80}},
+		FollowOnTxs: []*wire.Envelope{},
 
 		Judge: &core.Judge{
 			Name:    "wrong",
@@ -428,7 +254,7 @@ func TestPopulateChannel(t *testing.T) {
 	}
 
 	acct := &core.Account{
-		Name:    "crow",
+		Name:    "bob",
 		Pubkey:  []byte{40, 40, 40},
 		Privkey: []byte{40, 40, 40},
 		Judge: &core.Judge{
@@ -439,9 +265,9 @@ func TestPopulateChannel(t *testing.T) {
 	}
 
 	cpt := &core.Counterparty{
-		Name:    "flerb",
+		Name:    "crunk",
 		Pubkey:  []byte{40, 40, 40},
-		Address: "stoops.com:3004",
+		Address: "stoops.com:3002",
 		Judge: &core.Judge{
 			Name:    "joe",
 			Pubkey:  []byte{40, 40, 40},
@@ -455,12 +281,12 @@ func TestPopulateChannel(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		err = SetAccount(tx, acct)
+		err = SetJudge(tx, jd)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		err = SetJudge(tx, jd)
+		err = SetAccount(tx, acct)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -473,24 +299,109 @@ func TestPopulateChannel(t *testing.T) {
 		return nil
 	})
 
+	ch.Judge = jd
+	ch.Account = acct
+	ch.Counterparty = cpt
+
 	db.View(func(tx *bolt.Tx) error {
-		err = PopulateChannel(tx, ch)
+		ch2, err := GetChannel(tx, ch.ChannelId)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if !reflect.DeepEqual(ch.Judge, jd) {
-			t.Fatal("Judge incorrect", ch.Judge, jd)
+		if !reflect.DeepEqual(ch, ch2) {
+			t.Fatal("Counterparty incorrect")
 		}
 
-		if !reflect.DeepEqual(ch.Account, acct) {
-			t.Fatal("MyAccount incorrect", ch.Account, acct)
+		fooba, err := GetChannel(tx, "fooba")
+		if err != nil {
+			t.Fatal(err)
 		}
-
-		if !reflect.DeepEqual(ch.Counterparty, cpt) {
-			t.Fatal("TheirAccount incorrect", ch.Counterparty, cpt)
+		if fooba != nil {
+			t.Fatal("nonexistant channel should be nil")
 		}
 
 		return nil
 	})
+}
+
+func TestGetChannels(t *testing.T) {
+	db, err := bolt.Open("/tmp/test.db", 0600, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	defer os.Remove("/tmp/test.db")
+
+	err = MakeBuckets(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ch := &core.Channel{
+		ChannelId: "xyz23",
+		Phase:     2,
+
+		OpeningTx:         &wire.OpeningTx{},
+		OpeningTxEnvelope: &wire.Envelope{},
+
+		MyProposedUpdateTx:         &wire.UpdateTx{},
+		MyProposedUpdateTxEnvelope: &wire.Envelope{},
+
+		TheirProposedUpdateTx:         &wire.UpdateTx{},
+		TheirProposedUpdateTxEnvelope: &wire.Envelope{},
+
+		LastFullUpdateTx:         &wire.UpdateTx{},
+		LastFullUpdateTxEnvelope: &wire.Envelope{},
+
+		Me:          0,
+		FollowOnTxs: []*wire.Envelope{},
+
+		Judge: &core.Judge{
+			Name:    "wrong",
+			Pubkey:  []byte{40, 40, 40},
+			Address: "stoops.com:3004",
+		},
+
+		Account: &core.Account{
+			Name:    "wrong",
+			Pubkey:  []byte{40, 40, 40},
+			Privkey: []byte{40, 40, 40},
+			Judge: &core.Judge{
+				Name:    "wrong",
+				Pubkey:  []byte{40, 40, 40},
+				Address: "stoops.com:3004",
+			},
+		},
+
+		Counterparty: &core.Counterparty{
+			Name:    "wrong",
+			Pubkey:  []byte{40, 40, 40},
+			Address: "stoops.com:3004",
+			Judge: &core.Judge{
+				Name:    "wrong",
+				Pubkey:  []byte{40, 40, 40},
+				Address: "stoops.com:3004",
+			},
+		},
+	}
+
+	db.Update(func(tx *bolt.Tx) error {
+		err := SetChannel(tx, ch)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		chs, err := GetChannels(tx)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if !reflect.DeepEqual(*chs[0], *ch) {
+			t.Fatal(err)
+		}
+
+		return nil
+	})
+
 }

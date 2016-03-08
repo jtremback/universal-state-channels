@@ -1,6 +1,7 @@
 package access
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 
@@ -50,9 +51,15 @@ func SetJudge(tx *bolt.Tx, jd *core.Judge) error {
 
 func GetJudge(tx *bolt.Tx, key []byte) (*core.Judge, error) {
 	jd := &core.Judge{}
-	err := json.Unmarshal(tx.Bucket([]byte("Judges")).Get(key), jd)
+	jason := tx.Bucket([]byte("Judges")).Get([]byte(key))
+
+	if bytes.Compare(jason, []byte{}) == 0 {
+		return nil, nil
+	}
+
+	err := json.Unmarshal(jason, jd)
 	if err != nil {
-		return nil, errors.New("judge not found")
+		return nil, errors.New("channel not found")
 	}
 
 	return jd, nil
@@ -86,9 +93,16 @@ func SetAccount(tx *bolt.Tx, acct *core.Account) error {
 
 func GetAccount(tx *bolt.Tx, key []byte) (*core.Account, error) {
 	acct := &core.Account{}
-	err := json.Unmarshal(tx.Bucket([]byte("Accounts")).Get(key), acct)
+
+	jason := tx.Bucket([]byte("Accounts")).Get([]byte(key))
+
+	if bytes.Compare(jason, []byte{}) == 0 {
+		return nil, nil
+	}
+
+	err := json.Unmarshal(jason, acct)
 	if err != nil {
-		return nil, errors.New("judge not found")
+		return nil, errors.New("channel not found")
 	}
 
 	err = PopulateAccount(tx, acct)
@@ -137,9 +151,15 @@ func SetCounterparty(tx *bolt.Tx, cpt *core.Counterparty) error {
 
 func GetCounterparty(tx *bolt.Tx, key []byte) (*core.Counterparty, error) {
 	cpt := &core.Counterparty{}
-	err := json.Unmarshal(tx.Bucket([]byte("Counterparties")).Get(key), cpt)
+	jason := tx.Bucket([]byte("Counterparties")).Get([]byte(key))
+
+	if bytes.Compare(jason, []byte{}) == 0 {
+		return nil, nil
+	}
+
+	err := json.Unmarshal(jason, cpt)
 	if err != nil {
-		return nil, errors.New("counterparty not found")
+		return nil, errors.New("channel not found")
 	}
 
 	err = PopulateCounterparty(tx, cpt)
@@ -218,7 +238,13 @@ func SetChannel(tx *bolt.Tx, ch *core.Channel) error {
 
 func GetChannel(tx *bolt.Tx, key string) (*core.Channel, error) {
 	ch := &core.Channel{}
-	err := json.Unmarshal(tx.Bucket([]byte("Channels")).Get([]byte(key)), ch)
+	jason := tx.Bucket([]byte("Channels")).Get([]byte(key))
+
+	if bytes.Compare(jason, []byte{}) == 0 {
+		return nil, nil
+	}
+
+	err := json.Unmarshal(jason, ch)
 	if err != nil {
 		return nil, errors.New("channel not found")
 	}
