@@ -3,6 +3,7 @@ package peer
 import (
 	"bytes"
 	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"io"
 
@@ -114,11 +115,10 @@ func NewAccount(name string, jd *Judge) (*Account, error) {
 
 func (acct *Account) NewOpeningTx(cpt *Counterparty, state []byte, holdPeriod uint32) (*wire.OpeningTx, error) {
 	b, err := randomBytes(32)
-	chID := string(b)
+	chID := base64.URLEncoding.EncodeToString(b)
 	if err != nil {
 		return nil, err
 	}
-
 	pubkeys := [][]byte{acct.Pubkey, cpt.Pubkey}
 
 	return &wire.OpeningTx{
@@ -134,7 +134,6 @@ func SerializeOpeningTx(otx *wire.OpeningTx) (*wire.Envelope, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	return &wire.Envelope{
 		Payload: data,
 	}, nil
@@ -162,6 +161,7 @@ func NewChannel(ev *wire.Envelope, otx *wire.OpeningTx, acct *Account, cpt *Coun
 	if bytes.Compare(acct.Judge.Pubkey, cpt.Judge.Pubkey) != 0 {
 		return nil, errors.New("accounts do not have the same judge")
 	}
+
 	// Who is Me?
 	var me uint32
 	for i, k := range otx.Pubkeys {
