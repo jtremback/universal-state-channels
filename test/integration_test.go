@@ -1,6 +1,7 @@
 package test
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"testing"
@@ -148,12 +149,42 @@ func TestIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	acct2, err := p1.CallerAPI.NewAccount("acct2", jd1.Pubkey)
+	acct2, err := p2.CallerAPI.NewAccount("acct2", jd1.Pubkey)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	p1.CallerAPI.ProposeChannel([]byte{20}, acct1.Pubkey, acct2.Pubkey, 23)
+	err = p1.CallerAPI.AddCounterparty("cpt1", jd1.Pubkey, acct2.Pubkey, "2.com")
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	fmt.Println(acct1)
+	err = p2.CallerAPI.AddCounterparty("cpt2", jd1.Pubkey, acct1.Pubkey, "1.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ch, err := p1.CallerAPI.ProposeChannel([]byte{20}, acct1.Pubkey, acct2.Pubkey, 23)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = p1.CallerAPI.ConfirmChannel(ch.ChannelId)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	chs, err := p1.CallerAPI.ViewChannels()
+
+	b, err := json.Marshal(chs)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	b, err = json.MarshalIndent(chs, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fmt.Println(string(b))
 }

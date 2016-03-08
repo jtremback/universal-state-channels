@@ -2,7 +2,6 @@ package access
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"reflect"
 	"testing"
@@ -41,7 +40,6 @@ func TestSetJudge(t *testing.T) {
 	})
 
 	db.View(func(tx *bolt.Tx) error {
-		fmt.Println(string(tx.Bucket([]byte("Judges")).Get(jd.Pubkey)))
 		err := json.Unmarshal(tx.Bucket([]byte("Judges")).Get(jd.Pubkey), ju2)
 		if err != nil {
 			t.Fatal(err)

@@ -3,7 +3,6 @@ package access
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 
 	"github.com/boltdb/bolt"
 	core "github.com/jtremback/usc/core/peer"
@@ -167,7 +166,7 @@ func SetChannel(tx *bolt.Tx, ch *core.Channel) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("SET CHANNEL", []byte(ch.ChannelId))
+
 	err = tx.Bucket([]byte("Channels")).Put([]byte(ch.ChannelId), b)
 	if err != nil {
 		return err
@@ -219,7 +218,6 @@ func SetChannel(tx *bolt.Tx, ch *core.Channel) error {
 
 func GetChannel(tx *bolt.Tx, key string) (*core.Channel, error) {
 	ch := &core.Channel{}
-	fmt.Println("SET CHANNEL", tx.Bucket([]byte("Channels")).Get([]byte(key)))
 	err := json.Unmarshal(tx.Bucket([]byte("Channels")).Get([]byte(key)), ch)
 	if err != nil {
 		return nil, errors.New("channel not found")
@@ -235,7 +233,7 @@ func GetChannel(tx *bolt.Tx, key string) (*core.Channel, error) {
 func GetChannels(tx *bolt.Tx) ([]*core.Channel, error) {
 	var err error
 	chs := []*core.Channel{}
-	i := 0
+
 	err = tx.Bucket([]byte("Channels")).ForEach(func(k, v []byte) error {
 		ch := &core.Channel{}
 		err = json.Unmarshal(v, ch)
@@ -248,8 +246,7 @@ func GetChannels(tx *bolt.Tx) ([]*core.Channel, error) {
 			return errors.New("error populating channel")
 		}
 
-		chs[i] = ch
-		i++
+		chs = append(chs, ch)
 
 		return nil
 	})

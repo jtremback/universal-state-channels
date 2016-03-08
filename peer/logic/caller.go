@@ -136,6 +136,25 @@ func (a *CallerAPI) AddJudge(
 	})
 }
 
+func (a *CallerAPI) ViewChannels() ([]*core.Channel, error) {
+	var chs []*core.Channel
+	var err error
+	err = a.DB.Update(func(tx *bolt.Tx) error {
+		chs, err = access.GetChannels(tx)
+
+		if err != nil {
+			return errors.New("database error")
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return chs, nil
+}
+
 // ProposeChannel is called to propose a new channel. It creates and signs an
 // OpeningTx, sends it to the Counterparty and saves it in a new Channel.
 func (a *CallerAPI) ProposeChannel(
@@ -198,7 +217,7 @@ func (a *CallerAPI) ProposeChannel(
 func (a *CallerAPI) ConfirmChannel(channelID string) error {
 	var err error
 	return a.DB.Update(func(tx *bolt.Tx) error {
-		ch := &core.Channel{}
+		var ch *core.Channel
 		ch, err = access.GetChannel(tx, channelID)
 		if err != nil {
 			return err
