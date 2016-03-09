@@ -17,13 +17,21 @@ type ssb struct {
 	C []byte
 }
 
+var (
+	Indexes        []byte = []byte("Indexes")
+	Channels       []byte = []byte("Channels")
+	Judges         []byte = []byte("Judges")
+	Accounts       []byte = []byte("Accounts")
+	Counterparties []byte = []byte("Counterparties")
+)
+
 func MakeBuckets(db *bolt.DB) error {
 	err := db.Update(func(tx *bolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists([]byte("Indexes"))
-		_, err = tx.CreateBucketIfNotExists([]byte("Channels"))
-		_, err = tx.CreateBucketIfNotExists([]byte("Judges"))
-		_, err = tx.CreateBucketIfNotExists([]byte("Accounts"))
-		_, err = tx.CreateBucketIfNotExists([]byte("Counterparties"))
+		_, err := tx.CreateBucketIfNotExists(Indexes)
+		_, err = tx.CreateBucketIfNotExists(Channels)
+		_, err = tx.CreateBucketIfNotExists(Judges)
+		_, err = tx.CreateBucketIfNotExists(Accounts)
+		_, err = tx.CreateBucketIfNotExists(Counterparties)
 		if err != nil {
 			return err
 		}
@@ -41,7 +49,7 @@ func SetJudge(tx *bolt.Tx, jd *core.Judge) error {
 		return err
 	}
 
-	err = tx.Bucket([]byte("Judges")).Put(jd.Pubkey, b)
+	err = tx.Bucket(Judges).Put(jd.Pubkey, b)
 	if err != nil {
 		return err
 	}
@@ -51,7 +59,7 @@ func SetJudge(tx *bolt.Tx, jd *core.Judge) error {
 
 func GetJudge(tx *bolt.Tx, key []byte) (*core.Judge, error) {
 	jd := &core.Judge{}
-	jason := tx.Bucket([]byte("Judges")).Get([]byte(key))
+	jason := tx.Bucket(Judges).Get([]byte(key))
 
 	if bytes.Compare(jason, []byte{}) == 0 {
 		return nil, nil
@@ -71,7 +79,7 @@ func SetAccount(tx *bolt.Tx, acct *core.Account) error {
 		return err
 	}
 
-	err = tx.Bucket([]byte("Accounts")).Put([]byte(acct.Pubkey), b)
+	err = tx.Bucket(Accounts).Put([]byte(acct.Pubkey), b)
 	if err != nil {
 		return err
 	}
@@ -83,7 +91,7 @@ func SetAccount(tx *bolt.Tx, acct *core.Account) error {
 		return err
 	}
 
-	err = tx.Bucket([]byte("Judges")).Put(acct.Judge.Pubkey, b)
+	err = tx.Bucket(Judges).Put(acct.Judge.Pubkey, b)
 	if err != nil {
 		return err
 	}
@@ -94,7 +102,7 @@ func SetAccount(tx *bolt.Tx, acct *core.Account) error {
 func GetAccount(tx *bolt.Tx, key []byte) (*core.Account, error) {
 	acct := &core.Account{}
 
-	jason := tx.Bucket([]byte("Accounts")).Get([]byte(key))
+	jason := tx.Bucket(Accounts).Get([]byte(key))
 
 	if bytes.Compare(jason, []byte{}) == 0 {
 		return nil, nil
@@ -114,7 +122,7 @@ func GetAccount(tx *bolt.Tx, key []byte) (*core.Account, error) {
 
 func PopulateAccount(tx *bolt.Tx, acct *core.Account) error {
 	jd := &core.Judge{}
-	err := json.Unmarshal(tx.Bucket([]byte("Judges")).Get([]byte(acct.Judge.Pubkey)), jd)
+	err := json.Unmarshal(tx.Bucket(Judges).Get([]byte(acct.Judge.Pubkey)), jd)
 	if err != nil {
 		return err
 	}
@@ -129,7 +137,7 @@ func SetCounterparty(tx *bolt.Tx, cpt *core.Counterparty) error {
 		return err
 	}
 
-	err = tx.Bucket([]byte("Counterparties")).Put([]byte(cpt.Pubkey), b)
+	err = tx.Bucket(Counterparties).Put([]byte(cpt.Pubkey), b)
 	if err != nil {
 		return err
 	}
@@ -141,7 +149,7 @@ func SetCounterparty(tx *bolt.Tx, cpt *core.Counterparty) error {
 		return err
 	}
 
-	err = tx.Bucket([]byte("Judges")).Put(cpt.Judge.Pubkey, b)
+	err = tx.Bucket(Judges).Put(cpt.Judge.Pubkey, b)
 	if err != nil {
 		return err
 	}
@@ -151,7 +159,7 @@ func SetCounterparty(tx *bolt.Tx, cpt *core.Counterparty) error {
 
 func GetCounterparty(tx *bolt.Tx, key []byte) (*core.Counterparty, error) {
 	cpt := &core.Counterparty{}
-	jason := tx.Bucket([]byte("Counterparties")).Get([]byte(key))
+	jason := tx.Bucket(Counterparties).Get([]byte(key))
 
 	if bytes.Compare(jason, []byte{}) == 0 {
 		return nil, nil
@@ -171,7 +179,7 @@ func GetCounterparty(tx *bolt.Tx, key []byte) (*core.Counterparty, error) {
 
 func PopulateCounterparty(tx *bolt.Tx, cpt *core.Counterparty) error {
 	jd := &core.Judge{}
-	err := json.Unmarshal(tx.Bucket([]byte("Judges")).Get([]byte(cpt.Judge.Pubkey)), jd)
+	err := json.Unmarshal(tx.Bucket(Judges).Get([]byte(cpt.Judge.Pubkey)), jd)
 	if err != nil {
 		return err
 	}
@@ -187,7 +195,7 @@ func SetChannel(tx *bolt.Tx, ch *core.Channel) error {
 		return err
 	}
 
-	err = tx.Bucket([]byte("Channels")).Put([]byte(ch.ChannelId), b)
+	err = tx.Bucket(Channels).Put([]byte(ch.ChannelId), b)
 	if err != nil {
 		return err
 	}
@@ -201,7 +209,7 @@ func SetChannel(tx *bolt.Tx, ch *core.Channel) error {
 		return err
 	}
 
-	tx.Bucket([]byte("Judges")).Put(ch.Judge.Pubkey, b)
+	tx.Bucket(Judges).Put(ch.Judge.Pubkey, b)
 
 	// My Account
 
@@ -210,7 +218,7 @@ func SetChannel(tx *bolt.Tx, ch *core.Channel) error {
 		return err
 	}
 
-	tx.Bucket([]byte("Accounts")).Put(ch.Account.Pubkey, b)
+	tx.Bucket(Accounts).Put(ch.Account.Pubkey, b)
 
 	// Their Account
 
@@ -219,13 +227,13 @@ func SetChannel(tx *bolt.Tx, ch *core.Channel) error {
 		return err
 	}
 
-	tx.Bucket([]byte("Counterparties")).Put(ch.Counterparty.Pubkey, b)
+	tx.Bucket(Counterparties).Put(ch.Counterparty.Pubkey, b)
 
 	// Indexes
 
 	// Escrow Provider Pubkey
 
-	err = tx.Bucket([]byte("Indexes")).Put(compound.Key(ssb{
+	err = tx.Bucket(Indexes).Put(compound.Key(ssb{
 		"Judge",
 		"Pubkey",
 		ch.Judge.Pubkey}), []byte(ch.ChannelId))
@@ -238,7 +246,7 @@ func SetChannel(tx *bolt.Tx, ch *core.Channel) error {
 
 func GetChannel(tx *bolt.Tx, key string) (*core.Channel, error) {
 	ch := &core.Channel{}
-	jason := tx.Bucket([]byte("Channels")).Get([]byte(key))
+	jason := tx.Bucket(Channels).Get([]byte(key))
 
 	if bytes.Compare(jason, []byte{}) == 0 {
 		return nil, nil
@@ -260,7 +268,7 @@ func GetChannels(tx *bolt.Tx) ([]*core.Channel, error) {
 	var err error
 	chs := []*core.Channel{}
 
-	err = tx.Bucket([]byte("Channels")).ForEach(func(k, v []byte) error {
+	err = tx.Bucket(Channels).ForEach(func(k, v []byte) error {
 		ch := &core.Channel{}
 		err = json.Unmarshal(v, ch)
 		if err != nil {
@@ -286,7 +294,7 @@ func GetChannels(tx *bolt.Tx) ([]*core.Channel, error) {
 // 	var err error
 // 	chs := []*core.Channel{}
 // 	i := 0
-// 	err = tx.Bucket([]byte("Channels")).ForEach(func(k, v []byte) error {
+// 	err = tx.Bucket(Channels).ForEach(func(k, v []byte) error {
 // 		ch := &core.Channel{}
 // 		err = json.Unmarshal(v, ch)
 // 		if err != nil {
@@ -306,7 +314,7 @@ func GetChannels(tx *bolt.Tx) ([]*core.Channel, error) {
 
 func PopulateChannel(tx *bolt.Tx, ch *core.Channel) error {
 	acct := &core.Account{}
-	err := json.Unmarshal(tx.Bucket([]byte("Accounts")).Get([]byte(ch.Account.Pubkey)), acct)
+	err := json.Unmarshal(tx.Bucket(Accounts).Get([]byte(ch.Account.Pubkey)), acct)
 	if err != nil {
 		return err
 	}
@@ -316,7 +324,7 @@ func PopulateChannel(tx *bolt.Tx, ch *core.Channel) error {
 	}
 
 	cpt := &core.Counterparty{}
-	err = json.Unmarshal(tx.Bucket([]byte("Counterparties")).Get([]byte(ch.Counterparty.Pubkey)), cpt)
+	err = json.Unmarshal(tx.Bucket(Counterparties).Get([]byte(ch.Counterparty.Pubkey)), cpt)
 	if err != nil {
 		return err
 	}
@@ -326,7 +334,7 @@ func PopulateChannel(tx *bolt.Tx, ch *core.Channel) error {
 	}
 
 	jd := &core.Judge{}
-	err = json.Unmarshal(tx.Bucket([]byte("Judges")).Get([]byte(ch.Judge.Pubkey)), jd)
+	err = json.Unmarshal(tx.Bucket(Judges).Get([]byte(ch.Judge.Pubkey)), jd)
 	if err != nil {
 		return err
 	}
