@@ -158,7 +158,7 @@ func (a *CallerAPI) ViewChannels() ([]*core.Channel, error) {
 // ProposeChannel is called to propose a new channel. It creates and signs an
 // OpeningTx, sends it to the Counterparty and saves it in a new Channel.
 func (a *CallerAPI) ProposeChannel(
-    channelId string,
+	channelId string,
 	state []byte,
 	myPubkey []byte,
 	theirPubkey []byte,
@@ -212,10 +212,10 @@ func (a *CallerAPI) ProposeChannel(
 	return ch, nil
 }
 
-// ConfirmChannel is called on Channels which are in phase PENDING_OPEN. It signs
+// AcceptChannel is called on Channels which are in phase PENDING_OPEN. It signs
 // the Channel's OpeningTx, sends it to the Judge, and puts the Channel into
 // phase OPEN.
-func (a *CallerAPI) ConfirmChannel(channelID string) error {
+func (a *CallerAPI) AcceptChannel(channelID string) error {
 	var err error
 	return a.DB.Update(func(tx *bolt.Tx) error {
 		var ch *core.Channel

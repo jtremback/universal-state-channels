@@ -1,7 +1,6 @@
 package test
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"testing"
@@ -184,22 +183,22 @@ func TestIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = p2.CallerAPI.ConfirmChannel(ch.ChannelId)
+	err = p2.CallerAPI.AcceptChannel(ch.ChannelId)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	chs, err := p1.CallerAPI.ViewChannels()
+	// chs, err := p2.CallerAPI.ViewChannels()
 
-	b, err := json.Marshal(chs)
-	if err != nil {
-		t.Fatal(err)
-	}
+	// b, err := json.Marshal(chs)
+	// if err != nil {
+	// 	t.Fatal(err)
+	// }
 
-	b, err = json.MarshalIndent(chs, "", "  ")
-	if err != nil {
-		t.Fatal(err)
-	}
+	// b, err = json.MarshalIndent(chs, "", "  ")
+	// if err != nil {
+	// 	t.Fatal(err)
+	// }
 
-	fmt.Println(string(b))
+	// fmt.Println(string(b))
 }
