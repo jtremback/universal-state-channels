@@ -36,7 +36,7 @@ func (a *JudgeHTTP) getEnvelope(address string) (*wire.Envelope, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return nil, errors.New("counterparty error")
+		return nil, errors.New("judge error")
 	}
 
 	data, err := ioutil.ReadAll(resp.Body)
@@ -48,6 +48,20 @@ func (a *JudgeHTTP) getEnvelope(address string) (*wire.Envelope, error) {
 	}
 
 	return ev, nil
+}
+
+func (a *JudgeHTTP) getData(address string, key []byte) ([]byte, error) {
+	resp, err := http.Post(address, "application/octet-stream", bytes.NewReader([]byte(key)))
+	if err != nil {
+		return nil, errors.New("network error")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return nil, errors.New("judge error")
+	}
+
+	return ioutil.ReadAll(resp.Body)
 }
 
 func (a *JudgeHTTP) GetFinalUpdateTx(address string) (*wire.Envelope, error) {
@@ -73,3 +87,20 @@ func (a *JudgeHTTP) AddUpdateTx(ev *wire.Envelope, address string) error {
 func (a *JudgeHTTP) AddFollowOnTx(ev *wire.Envelope, address string) error {
 	return a.sendEnvelope(ev, address+"/add_follow_on_tx")
 }
+
+func (a *JudgeHTTP) GetChannel(chId string, address string) ([]byte, error) {
+	data, err := a.getData(address+"/check_account", []byte(chId))
+	if err != nil {
+		return nil, errors.New("can't reach judge")
+	}
+
+	return data, nil
+}
+
+// func (a *JudgeHTTP) CheckAccount(key []byte, address string) {
+// 	str := base64.URLEncoding.EncodeToString(key)
+// 	data, err := a.getData(address + "/check_account/" + str)
+// 	if err != nil {
+// 		return nil, errors.New("can't reach judge")
+// 	}
+// }

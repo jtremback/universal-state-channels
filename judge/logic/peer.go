@@ -5,6 +5,7 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/golang/protobuf/proto"
+	core "github.com/jtremback/usc/core/judge"
 	"github.com/jtremback/usc/core/wire"
 	"github.com/jtremback/usc/judge/access"
 )
@@ -23,8 +24,11 @@ func (a *PeerAPI) AddChannel(ev *wire.Envelope) error {
 			return err
 		}
 
-		_, err = access.GetChannel(tx, otx.ChannelId)
+		ch, err := access.GetChannel(tx, otx.ChannelId)
 		if err != nil {
+			return err
+		}
+		if ch != nil {
 			return errors.New("channel already exists")
 		}
 
@@ -43,7 +47,7 @@ func (a *PeerAPI) AddChannel(ev *wire.Envelope) error {
 			return err
 		}
 
-		ch, err := judge.AddChannel(ev, otx, acct0, acct1)
+		ch, err = judge.AddChannel(ev, otx, acct0, acct1)
 
 		access.SetChannel(tx, ch)
 		if err != nil {
@@ -57,6 +61,24 @@ func (a *PeerAPI) AddChannel(ev *wire.Envelope) error {
 	}
 
 	return nil
+}
+
+func (a *PeerAPI) GetChannel(chId string) (*core.Channel, error) {
+	var err error
+	ch := &core.Channel{}
+	err = a.DB.View(func(tx *bolt.Tx) error {
+		ch, err = access.GetChannel(tx, chId)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return ch, nil
 }
 
 func (a *PeerAPI) AddUpdateTx(ev *wire.Envelope) error {
@@ -147,3 +169,11 @@ func (a *PeerAPI) AddFollowOnTx(ev *wire.Envelope) error {
 		return nil
 	})
 }
+
+// func (a *PeerAPI) GetLog() ([]*wire.Envelope, error) {
+// 	var err error
+// 	return a.DB.View(func(tx *bolt.Tx) error {
+//         access
+// 	})
+// 	return nil, nil
+// }

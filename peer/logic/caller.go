@@ -1,7 +1,9 @@
 package logic
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/boltdb/bolt"
 	"github.com/golang/protobuf/proto"
@@ -22,6 +24,7 @@ type JudgeClient interface {
 	AddCancellationTx(*wire.Envelope, string) error
 	AddUpdateTx(*wire.Envelope, string) error
 	AddFollowOnTx(*wire.Envelope, string) error
+	GetChannel(string, string) ([]byte, error)
 }
 
 type CounterpartyClient interface {
@@ -139,7 +142,7 @@ func (a *CallerAPI) AddJudge(
 func (a *CallerAPI) ViewChannels() ([]*core.Channel, error) {
 	var chs []*core.Channel
 	var err error
-	err = a.DB.Update(func(tx *bolt.Tx) error {
+	err = a.DB.View(func(tx *bolt.Tx) error {
 		chs, err = access.GetChannels(tx)
 
 		if err != nil {
@@ -154,6 +157,28 @@ func (a *CallerAPI) ViewChannels() ([]*core.Channel, error) {
 
 	return chs, nil
 }
+
+// func (a *CallerAPI) CheckChannels() ([]*core.Channel, error) {
+// 	var chs []*core.Channel
+// 	var err error
+// 	err = a.DB.Update(func(tx *bolt.Tx) error {
+// 		accts, err = access.GetAccounts(tx)
+// 		if err != nil {
+// 			return errors.New("database error")
+// 		}
+
+// 		for _, acct := range accts {
+// 			a.JudgeClient.GetChannels()
+// 		}
+
+// 		return nil
+// 	})
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	return chs, nil
+// }
 
 // ProposeChannel is called to propose a new channel. It creates and signs an
 // OpeningTx, sends it to the Counterparty and saves it in a new Channel.
@@ -236,6 +261,33 @@ func (a *CallerAPI) AcceptChannel(channelID string) error {
 			return err
 		}
 
+		return nil
+	})
+}
+
+func (a *CallerAPI) GetChannel(chId string) error {
+	var err error
+	return a.DB.Update(func(tx *bolt.Tx) error {
+		var ch *core.Channel
+		ch, err = access.GetChannel(tx, chId)
+		if err != nil {
+			return err
+		}
+
+		// ch.Account.AppendSignature(ch.OpeningTxEnvelope)
+
+		// err = access.SetChannel(tx, ch)
+		// if err != nil {
+		// 	return errors.New("database error")
+		// }
+
+		b, err := a.JudgeClient.GetChannel(chId, ch.Judge.Address)
+		if err != nil {
+			return err
+		}
+
+		json.Unmarshal(b, ch)
+		fmt.Println("GOT CHANNEL", ch)
 		return nil
 	})
 }

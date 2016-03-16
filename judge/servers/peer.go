@@ -41,6 +41,30 @@ func (a *PeerHTTP) addChannel(w http.ResponseWriter, r *http.Request) {
 	a.send(w, "ok")
 }
 
+func (a *PeerHTTP) getChannel(w http.ResponseWriter, r *http.Request) {
+	if r.Body == nil {
+		a.fail(w, "no body", 500)
+		return
+	}
+
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		a.fail(w, "server error", 500)
+	}
+
+	ch, err := a.Logic.GetChannel(string(b))
+	if err != nil {
+		a.fail(w, "server error", 500)
+	}
+
+	data, err := json.Marshal(ch)
+	if err != nil {
+		a.fail(w, "server error", 500)
+	}
+
+	a.send(w, data)
+}
+
 func (a *PeerHTTP) addUpdateTx(w http.ResponseWriter, r *http.Request) {
 	if r.Body == nil {
 		a.fail(w, "no body", 500)

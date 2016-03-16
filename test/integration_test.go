@@ -75,6 +75,11 @@ func (a *JudgeClient) AddFollowOnTx(ev *wire.Envelope, address string) error {
 	return nil
 }
 
+func (a *JudgeClient) GetChannel(chId string, address string) ([]byte, error) {
+	fmt.Println("shibby")
+	return nil, nil
+}
+
 func TestIntegration(t *testing.T) {
 	p1DB, err := bolt.Open("/tmp/p1.db", 0600, nil)
 	if err != nil {
@@ -183,12 +188,20 @@ func TestIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = p2.CallerAPI.AcceptChannel(ch.ChannelId)
+	// err = p2.CallerAPI.AcceptChannel(ch.ChannelId)
+	// if err != nil {
+	// 	t.Fatal(err)
+	// }
+
+	err = p2.CallerAPI.GetChannel(ch.ChannelId)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// chs, err := p2.CallerAPI.ViewChannels()
+	// chs, err = p2.CallerAPI.ViewChannels()
+	// if err != nil {
+	// 	t.Fatal(err)
+	// }
 
 	// b, err := json.Marshal(chs)
 	// if err != nil {

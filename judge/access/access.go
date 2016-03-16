@@ -20,6 +20,7 @@ var (
 	Channels []byte = []byte("Channels")
 	Judges   []byte = []byte("Judges")
 	Accounts []byte = []byte("Accounts")
+	TxLog    []byte = []byte("TxLog")
 )
 
 func MakeBuckets(db *bolt.DB) error {
@@ -28,6 +29,7 @@ func MakeBuckets(db *bolt.DB) error {
 		_, err = tx.CreateBucketIfNotExists(Channels)
 		_, err = tx.CreateBucketIfNotExists(Judges)
 		_, err = tx.CreateBucketIfNotExists(Accounts)
+		_, err = tx.CreateBucketIfNotExists(TxLog)
 		if err != nil {
 			return err
 		}
@@ -39,18 +41,52 @@ func MakeBuckets(db *bolt.DB) error {
 	return nil
 }
 
+// func LogTx(tx *bolt.Tx, ev *wire.Envelope) error {
+// 	buck := tx.Bucket(TxLog)
+
+// 	id, _ := buck.NextSequence()
+
+// 	buf, err := proto.Marshal(ev)
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	// Persist bytes to users bucket.
+// 	return buck.Put(itob(int(id)), buf)
+// }
+
+// func GetLog(tx *bolt.Tx, account []byte, start int) error {
+// 	buck := tx.Bucket(TxLog)
+// 	buck = buck.Bucket(account)
+
+// 	str, err := strconv.ParseUint("42", 10, 64)
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	c := buck.Cursor()
+
+// 	for k, v := c.Seek(itob(int(str))); k != nil; k, v = c.Next() {
+
+// 	}
+
+// 	return nil
+// }
+
+// // itob returns an 8-byte big endian representation of v.
+// func itob(v int) []byte {
+// 	b := make([]byte, 8)
+// 	binary.BigEndian.PutUint64(b, uint64(v))
+// 	return b
+// }
+
 func SetJudge(tx *bolt.Tx, jd *core.Judge) error {
 	b, err := json.Marshal(jd)
 	if err != nil {
 		return err
 	}
 
-	err = tx.Bucket(Judges).Put(jd.Pubkey, b)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return tx.Bucket(Judges).Put(jd.Pubkey, b)
 }
 
 func GetJudge(tx *bolt.Tx, key []byte) (*core.Judge, error) {

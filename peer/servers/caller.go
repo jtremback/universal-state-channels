@@ -42,6 +42,26 @@ func (a *CallerHTTP) proposeChannel(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (a *CallerHTTP) getChannel(w http.ResponseWriter, r *http.Request) {
+	if r.Body == nil {
+		a.fail(w, "no body", 500)
+		return
+	}
+
+	req := &struct {
+		ChannelId string
+	}{}
+	err := json.NewDecoder(r.Body).Decode(req)
+	if err != nil {
+		a.fail(w, "body parsing error", 500)
+	}
+
+	err = a.Logic.GetChannel(req.ChannelId)
+	if err != nil {
+		a.fail(w, err.Error(), 500)
+	}
+}
+
 func (a *CallerHTTP) confirmChannel(w http.ResponseWriter, r *http.Request) {
 	if r.Body == nil {
 		a.fail(w, "no body", 500)
