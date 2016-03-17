@@ -7,7 +7,6 @@ import (
 
 	"github.com/boltdb/bolt"
 	core "github.com/jtremback/usc/core/peer"
-	"github.com/tv42/compound"
 )
 
 // compound index types
@@ -49,25 +48,20 @@ func SetJudge(tx *bolt.Tx, jd *core.Judge) error {
 		return err
 	}
 
-	err = tx.Bucket(Judges).Put(jd.Pubkey, b)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return tx.Bucket(Judges).Put(jd.Pubkey, b)
 }
 
 func GetJudge(tx *bolt.Tx, key []byte) (*core.Judge, error) {
-	jd := &core.Judge{}
-	jason := tx.Bucket(Judges).Get([]byte(key))
+	b := tx.Bucket(Judges).Get([]byte(key))
 
-	if bytes.Compare(jason, []byte{}) == 0 {
+	if bytes.Compare(b, []byte{}) == 0 {
 		return nil, nil
 	}
 
-	err := json.Unmarshal(jason, jd)
+	jd := &core.Judge{}
+	err := json.Unmarshal(b, jd)
 	if err != nil {
-		return nil, errors.New("channel not found")
+		return nil, err
 	}
 
 	return jd, nil
@@ -86,47 +80,41 @@ func SetAccount(tx *bolt.Tx, acct *core.Account) error {
 
 	// Relations
 
-	b, err = json.Marshal(acct.Judge)
+	err = SetJudge(tx, acct.Judge)
 	if err != nil {
 		return err
 	}
-
-	err = tx.Bucket(Judges).Put(acct.Judge.Pubkey, b)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
 func GetAccount(tx *bolt.Tx, key []byte) (*core.Account, error) {
 	acct := &core.Account{}
 
-	jason := tx.Bucket(Accounts).Get([]byte(key))
+	b := tx.Bucket(Accounts).Get([]byte(key))
 
-	if bytes.Compare(jason, []byte{}) == 0 {
+	if bytes.Compare(b, []byte{}) == 0 {
 		return nil, nil
 	}
 
-	err := json.Unmarshal(jason, acct)
+	err := json.Unmarshal(b, acct)
 	if err != nil {
-		return nil, errors.New("channel not found")
+		return nil, err
 	}
 
 	err = PopulateAccount(tx, acct)
 	if err != nil {
-		return nil, errors.New("database error")
+		return nil, err
 	}
 	return acct, nil
 }
 
 func PopulateAccount(tx *bolt.Tx, acct *core.Account) error {
-	jd := &core.Judge{}
-	err := json.Unmarshal(tx.Bucket(Judges).Get([]byte(acct.Judge.Pubkey)), jd)
+	judge, err := GetJudge(tx, acct.Judge.Pubkey)
 	if err != nil {
 		return err
 	}
-	acct.Judge = jd
+
+	acct.Judge = judge
 
 	return nil
 }
@@ -144,47 +132,43 @@ func SetCounterparty(tx *bolt.Tx, cpt *core.Counterparty) error {
 
 	// Relations
 
-	b, err = json.Marshal(cpt.Judge)
+	err = SetJudge(tx, cpt.Judge)
 	if err != nil {
 		return err
 	}
-
-	err = tx.Bucket(Judges).Put(cpt.Judge.Pubkey, b)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
 func GetCounterparty(tx *bolt.Tx, key []byte) (*core.Counterparty, error) {
-	cpt := &core.Counterparty{}
-	jason := tx.Bucket(Counterparties).Get([]byte(key))
+	b := tx.Bucket(Counterparties).Get([]byte(key))
 
-	if bytes.Compare(jason, []byte{}) == 0 {
+	if bytes.Compare(b, []byte{}) == 0 {
 		return nil, nil
 	}
 
-	err := json.Unmarshal(jason, cpt)
+	cpt := &core.Counterparty{}
+	err := json.Unmarshal(b, cpt)
 	if err != nil {
-		return nil, errors.New("channel not found")
+		return nil, err
 	}
+
+	// Populate
 
 	err = PopulateCounterparty(tx, cpt)
 	if err != nil {
-		return nil, errors.New("database error")
+		return nil, err
 	}
+
 	return cpt, nil
 }
 
 func PopulateCounterparty(tx *bolt.Tx, cpt *core.Counterparty) error {
-	jd := &core.Judge{}
-	err := json.Unmarshal(tx.Bucket(Judges).Get([]byte(cpt.Judge.Pubkey)), jd)
+	judge, err := GetJudge(tx, cpt.Judge.Pubkey)
 	if err != nil {
 		return err
 	}
 
-	cpt.Judge = jd
+	cpt.Judge = judge
 
 	return nil
 }
@@ -202,41 +186,21 @@ func SetChannel(tx *bolt.Tx, ch *core.Channel) error {
 
 	// Relations
 
-	// Escrow Provider
+	// Judge
 
-	b, err = json.Marshal(ch.Judge)
+	err = SetJudge(tx, ch.Judge)
 	if err != nil {
 		return err
 	}
 
-	tx.Bucket(Judges).Put(ch.Judge.Pubkey, b)
+	// Accounts
 
-	// My Account
-
-	b, err = json.Marshal(ch.Account)
+	err = SetAccount(tx, ch.Account)
 	if err != nil {
 		return err
 	}
 
-	tx.Bucket(Accounts).Put(ch.Account.Pubkey, b)
-
-	// Their Account
-
-	b, err = json.Marshal(ch.Counterparty)
-	if err != nil {
-		return err
-	}
-
-	tx.Bucket(Counterparties).Put(ch.Counterparty.Pubkey, b)
-
-	// Indexes
-
-	// Escrow Provider Pubkey
-
-	err = tx.Bucket(Indexes).Put(compound.Key(ssb{
-		"Judge",
-		"Pubkey",
-		ch.Judge.Pubkey}), []byte(ch.ChannelId))
+	err = SetCounterparty(tx, ch.Counterparty)
 	if err != nil {
 		return err
 	}
@@ -245,23 +209,46 @@ func SetChannel(tx *bolt.Tx, ch *core.Channel) error {
 }
 
 func GetChannel(tx *bolt.Tx, key string) (*core.Channel, error) {
-	ch := &core.Channel{}
-	jason := tx.Bucket(Channels).Get([]byte(key))
+	b := tx.Bucket(Channels).Get([]byte(key))
 
-	if bytes.Compare(jason, []byte{}) == 0 {
+	if bytes.Compare(b, []byte{}) == 0 {
 		return nil, nil
 	}
 
-	err := json.Unmarshal(jason, ch)
+	ch := &core.Channel{}
+	err := json.Unmarshal(b, ch)
 	if err != nil {
-		return nil, errors.New("channel not found")
+		return nil, err
 	}
 
 	err = PopulateChannel(tx, ch)
 	if err != nil {
-		return nil, errors.New("database error")
+		return nil, err
 	}
 	return ch, nil
+}
+
+func PopulateChannel(tx *bolt.Tx, ch *core.Channel) error {
+	acct, err := GetAccount(tx, ch.Account.Pubkey)
+	if err != nil {
+		return err
+	}
+
+	cpt, err := GetCounterparty(tx, ch.Counterparty.Pubkey)
+	if err != nil {
+		return err
+	}
+
+	jd, err := GetJudge(tx, ch.Judge.Pubkey)
+	if err != nil {
+		return err
+	}
+
+	ch.Account = acct
+	ch.Counterparty = cpt
+	ch.Judge = jd
+
+	return nil
 }
 
 func GetChannels(tx *bolt.Tx) ([]*core.Channel, error) {
@@ -288,60 +275,4 @@ func GetChannels(tx *bolt.Tx) ([]*core.Channel, error) {
 		return nil, errors.New("database error")
 	}
 	return chs, nil
-}
-
-// func GetProposedUpdateTxs(tx *bolt.Tx) ([]*core.Channel, error) {
-// 	var err error
-// 	chs := []*core.Channel{}
-// 	i := 0
-// 	err = tx.Bucket(Channels).ForEach(func(k, v []byte) error {
-// 		ch := &core.Channel{}
-// 		err = json.Unmarshal(v, ch)
-// 		if err != nil {
-// 			return err
-// 		}
-// 		if bytes.Compare(ch.ProposedUpdateTxEnvelope.Signatures[ch.Me], []byte{}) == 0 {
-// 			chs[i] = ch
-// 			i++
-// 		}
-// 		return nil
-// 	})
-// 	if err != nil {
-// 		return nil, errors.New("database error")
-// 	}
-// 	return chs, nil
-// }
-
-func PopulateChannel(tx *bolt.Tx, ch *core.Channel) error {
-	acct := &core.Account{}
-	err := json.Unmarshal(tx.Bucket(Accounts).Get([]byte(ch.Account.Pubkey)), acct)
-	if err != nil {
-		return err
-	}
-	err = PopulateAccount(tx, acct)
-	if err != nil {
-		return err
-	}
-
-	cpt := &core.Counterparty{}
-	err = json.Unmarshal(tx.Bucket(Counterparties).Get([]byte(ch.Counterparty.Pubkey)), cpt)
-	if err != nil {
-		return err
-	}
-	err = PopulateCounterparty(tx, cpt)
-	if err != nil {
-		return err
-	}
-
-	jd := &core.Judge{}
-	err = json.Unmarshal(tx.Bucket(Judges).Get([]byte(ch.Judge.Pubkey)), jd)
-	if err != nil {
-		return err
-	}
-
-	ch.Account = acct
-	ch.Counterparty = cpt
-	ch.Judge = jd
-
-	return nil
 }
