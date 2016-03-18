@@ -49,9 +49,9 @@ func TestJudge(t *testing.T) {
 		}
 
 		_, err = GetJudge(tx, []byte("fooba"))
-		err, ok := err.(*nilError)
+		err, ok := err.(*NilError)
 		if !ok {
-			t.Fatal("nonexistant judge should return nilError")
+			t.Fatal("nonexistant judge should return NilError")
 		}
 
 		return nil
@@ -114,9 +114,9 @@ func TestAccount(t *testing.T) {
 		}
 
 		_, err = GetAccount(tx, []byte("fooba"))
-		err, ok := err.(*nilError)
+		err, ok := err.(*NilError)
 		if !ok {
-			t.Fatal("nonexistant account should return nilError")
+			t.Fatal("nonexistant account should return NilError")
 		}
 
 		return nil
@@ -244,9 +244,9 @@ func TestChannel(t *testing.T) {
 		}
 
 		_, err = GetChannel(tx, "fooba")
-		err, ok := err.(*nilError)
+		err, ok := err.(*NilError)
 		if !ok {
-			t.Fatal("nonexistant account should return nilError")
+			t.Fatal("nonexistant account should return NilError")
 		}
 
 		return nil

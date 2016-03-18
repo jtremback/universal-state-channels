@@ -23,11 +23,11 @@ var (
 	Accounts []byte = []byte("Accounts")
 )
 
-type nilError struct {
+type NilError struct {
 	s string
 }
 
-func (e *nilError) Error() string {
+func (e *NilError) Error() string {
 	return fmt.Sprintf("%s", e.s)
 }
 
@@ -48,45 +48,6 @@ func MakeBuckets(db *bolt.DB) error {
 	return nil
 }
 
-// func LogTx(tx *bolt.Tx, ev *wire.Envelope) error {
-// 	buck := tx.Bucket(TxLog)
-
-// 	id, _ := buck.NextSequence()
-
-// 	buf, err := proto.Marshal(ev)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	// Persist bytes to users bucket.
-// 	return buck.Put(itob(int(id)), buf)
-// }
-
-// func GetLog(tx *bolt.Tx, account []byte, start int) error {
-// 	buck := tx.Bucket(TxLog)
-// 	buck = buck.Bucket(account)
-
-// 	str, err := strconv.ParseUint("42", 10, 64)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	c := buck.Cursor()
-
-// 	for k, v := c.Seek(itob(int(str))); k != nil; k, v = c.Next() {
-
-// 	}
-
-// 	return nil
-// }
-
-// // itob returns an 8-byte big endian representation of v.
-// func itob(v int) []byte {
-// 	b := make([]byte, 8)
-// 	binary.BigEndian.PutUint64(b, uint64(v))
-// 	return b
-// }
-
 func SetJudge(tx *bolt.Tx, jd *core.Judge) error {
 	b, err := json.Marshal(jd)
 	if err != nil {
@@ -100,7 +61,7 @@ func GetJudge(tx *bolt.Tx, key []byte) (*core.Judge, error) {
 	b := tx.Bucket(Judges).Get([]byte(key))
 
 	if bytes.Compare(b, []byte{}) == 0 {
-		return nil, &nilError{"judge not found"}
+		return nil, &NilError{"judge not found"}
 	}
 
 	jd := &core.Judge{}
@@ -136,7 +97,7 @@ func GetAccount(tx *bolt.Tx, key []byte) (*core.Account, error) {
 	b := tx.Bucket(Accounts).Get([]byte(key))
 
 	if bytes.Compare(b, []byte{}) == 0 {
-		return nil, &nilError{"account not found"}
+		return nil, &NilError{"account not found"}
 	}
 
 	acct := &core.Account{}
@@ -202,7 +163,7 @@ func GetChannel(tx *bolt.Tx, key string) (*core.Channel, error) {
 	b := tx.Bucket(Channels).Get([]byte(key))
 
 	if bytes.Compare(b, []byte{}) == 0 {
-		return nil, &nilError{"channel not found"}
+		return nil, &NilError{"channel not found"}
 	}
 
 	ch := &core.Channel{}

@@ -25,11 +25,11 @@ var (
 	Counterparties []byte = []byte("Counterparties")
 )
 
-type nilError struct {
+type NilError struct {
 	s string
 }
 
-func (e *nilError) Error() string {
+func (e *NilError) Error() string {
 	return fmt.Sprintf("%s", e.s)
 }
 
@@ -64,7 +64,7 @@ func GetJudge(tx *bolt.Tx, key []byte) (*core.Judge, error) {
 	b := tx.Bucket(Judges).Get([]byte(key))
 
 	if bytes.Compare(b, []byte{}) == 0 {
-		return nil, &nilError{"judge not found"}
+		return nil, &NilError{"judge not found"}
 	}
 
 	jd := &core.Judge{}
@@ -102,7 +102,7 @@ func GetAccount(tx *bolt.Tx, key []byte) (*core.Account, error) {
 	b := tx.Bucket(Accounts).Get([]byte(key))
 
 	if bytes.Compare(b, []byte{}) == 0 {
-		return nil, &nilError{"account not found"}
+		return nil, &NilError{"account not found"}
 	}
 
 	err := json.Unmarshal(b, acct)
@@ -152,7 +152,7 @@ func GetCounterparty(tx *bolt.Tx, key []byte) (*core.Counterparty, error) {
 	b := tx.Bucket(Counterparties).Get([]byte(key))
 
 	if bytes.Compare(b, []byte{}) == 0 {
-		return nil, &nilError{"counterparty not found"}
+		return nil, &NilError{"counterparty not found"}
 	}
 
 	cpt := &core.Counterparty{}
@@ -221,7 +221,7 @@ func GetChannel(tx *bolt.Tx, key string) (*core.Channel, error) {
 	b := tx.Bucket(Channels).Get([]byte(key))
 
 	if bytes.Compare(b, []byte{}) == 0 {
-		return nil, &nilError{"channel not found"}
+		return nil, &NilError{"channel not found"}
 	}
 
 	ch := &core.Channel{}
