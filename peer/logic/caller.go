@@ -253,7 +253,7 @@ func (a *CallerAPI) AcceptChannel(channelID string) error {
 
 		err = access.SetChannel(tx, ch)
 		if err != nil {
-			return errors.New("database error")
+			return err
 		}
 
 		err = a.JudgeClient.AddChannel(ch.OpeningTxEnvelope, ch.Judge.Address)

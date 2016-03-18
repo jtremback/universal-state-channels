@@ -175,12 +175,22 @@ func TestIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = p1.CallerAPI.AddCounterparty("cpt1", jd1.Pubkey, acct2.Pubkey, "2.com")
+	err = p1.CallerAPI.AddCounterparty("acct2", jd1.Pubkey, acct2.Pubkey, "2.com")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = p2.CallerAPI.AddCounterparty("cpt2", jd1.Pubkey, acct1.Pubkey, "1.com")
+	err = p2.CallerAPI.AddCounterparty("acct1", jd1.Pubkey, acct1.Pubkey, "1.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = j.CallerAPI.AddAccount("acct1", jd1.Pubkey, acct1.Pubkey, "1.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = j.CallerAPI.AddAccount("acct2", jd1.Pubkey, acct2.Pubkey, "2.com")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -195,10 +205,10 @@ func TestIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = p2.CallerAPI.GetChannel(ch.ChannelId)
-	if err != nil {
-		t.Fatal(err)
-	}
+	// err = p2.CallerAPI.GetChannel(ch.ChannelId)
+	// if err != nil {
+	// 	t.Fatal(err)
+	// }
 
 	// chs, err = p2.CallerAPI.ViewChannels()
 	// if err != nil {
