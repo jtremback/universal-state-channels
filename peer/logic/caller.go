@@ -3,7 +3,6 @@ package logic
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 
 	"github.com/boltdb/bolt"
 	"github.com/golang/protobuf/proto"
@@ -238,8 +237,7 @@ func (a *CallerAPI) ProposeChannel(
 }
 
 // AcceptChannel is called on Channels which are in phase PENDING_OPEN. It signs
-// the Channel's OpeningTx, sends it to the Judge, and puts the Channel into
-// phase OPEN.
+// the Channel's OpeningTx and sends it to the Judge.
 func (a *CallerAPI) AcceptChannel(channelID string) error {
 	var err error
 	return a.DB.Update(func(tx *bolt.Tx) error {
@@ -274,20 +272,13 @@ func (a *CallerAPI) GetChannel(chId string) error {
 			return err
 		}
 
-		// ch.Account.AppendSignature(ch.OpeningTxEnvelope)
-
-		// err = access.SetChannel(tx, ch)
-		// if err != nil {
-		// 	return errors.New("database error")
-		// }
-
 		b, err := a.JudgeClient.GetChannel(chId, ch.Judge.Address)
 		if err != nil {
 			return err
 		}
 
 		json.Unmarshal(b, ch)
-		fmt.Println("GOT CHANNEL", ch, b)
+
 		return nil
 	})
 }
@@ -339,19 +330,19 @@ func (a *CallerAPI) NewUpdateTx(state []byte, channelID string, fast bool) error
 
 		ev, err := core.SerializeUpdateTx(utx)
 		if err != nil {
-			return errors.New("server error")
+			return err
 		}
 
 		ch.SignProposedUpdateTx(ev, utx)
 
-		err = a.CounterpartyClient.AddChannel(ev, ch.Counterparty.Address)
+		err = a.CounterpartyClient.AddUpdateTx(ev, ch.Counterparty.Address)
 		if err != nil {
 			return err
 		}
 
 		err = access.SetChannel(tx, ch)
 		if err != nil {
-			return errors.New("database error")
+			return err
 		}
 
 		return nil

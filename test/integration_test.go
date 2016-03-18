@@ -1,6 +1,7 @@
 package test
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"testing"
@@ -59,6 +60,7 @@ func (client *JudgeClient) AddChannel(ev *wire.Envelope, address string) error {
 	if err != nil {
 		client.T.Fatal(err)
 	}
+	fmt.Println("JudgeClient addChannel")
 	return nil
 }
 
@@ -205,25 +207,35 @@ func TestIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// err = p2.CallerAPI.GetChannel(ch.ChannelId)
-	// if err != nil {
-	// 	t.Fatal(err)
-	// }
+	err = p1.CallerAPI.GetChannel(ch.ChannelId)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	// chs, err = p2.CallerAPI.ViewChannels()
-	// if err != nil {
-	// 	t.Fatal(err)
-	// }
+	err = p2.CallerAPI.GetChannel(ch.ChannelId)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	// b, err := json.Marshal(chs)
-	// if err != nil {
-	// 	t.Fatal(err)
-	// }
+	chs, err := p1.CallerAPI.ViewChannels()
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	// b, err = json.MarshalIndent(chs, "", "  ")
-	// if err != nil {
-	// 	t.Fatal(err)
-	// }
+	b, err := json.Marshal(chs)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	// fmt.Println(string(b))
+	b, err = json.MarshalIndent(chs, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fmt.Println(string(b))
+
+	p1.CallerAPI.NewUpdateTx([]byte{4, 30}, "shibby", false)
+	if err != nil {
+		t.Fatal(err)
+	}
 }
