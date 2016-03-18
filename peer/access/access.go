@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/boltdb/bolt"
 	core "github.com/jtremback/usc/core/peer"
@@ -23,6 +24,14 @@ var (
 	Accounts       []byte = []byte("Accounts")
 	Counterparties []byte = []byte("Counterparties")
 )
+
+type nilError struct {
+	s string
+}
+
+func (e *nilError) Error() string {
+	return fmt.Sprintf("%s", e.s)
+}
 
 func MakeBuckets(db *bolt.DB) error {
 	err := db.Update(func(tx *bolt.Tx) error {
@@ -55,7 +64,7 @@ func GetJudge(tx *bolt.Tx, key []byte) (*core.Judge, error) {
 	b := tx.Bucket(Judges).Get([]byte(key))
 
 	if bytes.Compare(b, []byte{}) == 0 {
-		return nil, nil
+		return nil, &nilError{"judge not found"}
 	}
 
 	jd := &core.Judge{}
@@ -93,7 +102,7 @@ func GetAccount(tx *bolt.Tx, key []byte) (*core.Account, error) {
 	b := tx.Bucket(Accounts).Get([]byte(key))
 
 	if bytes.Compare(b, []byte{}) == 0 {
-		return nil, nil
+		return nil, &nilError{"account not found"}
 	}
 
 	err := json.Unmarshal(b, acct)
@@ -143,7 +152,7 @@ func GetCounterparty(tx *bolt.Tx, key []byte) (*core.Counterparty, error) {
 	b := tx.Bucket(Counterparties).Get([]byte(key))
 
 	if bytes.Compare(b, []byte{}) == 0 {
-		return nil, nil
+		return nil, &nilError{"counterparty not found"}
 	}
 
 	cpt := &core.Counterparty{}
@@ -212,7 +221,7 @@ func GetChannel(tx *bolt.Tx, key string) (*core.Channel, error) {
 	b := tx.Bucket(Channels).Get([]byte(key))
 
 	if bytes.Compare(b, []byte{}) == 0 {
-		return nil, nil
+		return nil, &nilError{"channel not found"}
 	}
 
 	ch := &core.Channel{}

@@ -3,6 +3,7 @@ package access
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 
 	"github.com/boltdb/bolt"
 	core "github.com/jtremback/usc/core/judge"
@@ -21,6 +22,14 @@ var (
 	Judges   []byte = []byte("Judges")
 	Accounts []byte = []byte("Accounts")
 )
+
+type nilError struct {
+	s string
+}
+
+func (e *nilError) Error() string {
+	return fmt.Sprintf("%s", e.s)
+}
 
 func MakeBuckets(db *bolt.DB) error {
 	err := db.Update(func(tx *bolt.Tx) error {
@@ -91,7 +100,7 @@ func GetJudge(tx *bolt.Tx, key []byte) (*core.Judge, error) {
 	b := tx.Bucket(Judges).Get([]byte(key))
 
 	if bytes.Compare(b, []byte{}) == 0 {
-		return nil, nil
+		return nil, &nilError{"judge not found"}
 	}
 
 	jd := &core.Judge{}
@@ -127,7 +136,7 @@ func GetAccount(tx *bolt.Tx, key []byte) (*core.Account, error) {
 	b := tx.Bucket(Accounts).Get([]byte(key))
 
 	if bytes.Compare(b, []byte{}) == 0 {
-		return nil, nil
+		return nil, &nilError{"account not found"}
 	}
 
 	acct := &core.Account{}
@@ -193,7 +202,7 @@ func GetChannel(tx *bolt.Tx, key string) (*core.Channel, error) {
 	b := tx.Bucket(Channels).Get([]byte(key))
 
 	if bytes.Compare(b, []byte{}) == 0 {
-		return nil, nil
+		return nil, &nilError{"channel not found"}
 	}
 
 	ch := &core.Channel{}

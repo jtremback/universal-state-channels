@@ -47,6 +47,13 @@ func TestJudge(t *testing.T) {
 		if !reflect.DeepEqual(jd, jd2) {
 			t.Fatal("Account incorrect")
 		}
+
+		_, err = GetJudge(tx, []byte("fooba"))
+		err, ok := err.(*nilError)
+		if !ok {
+			t.Fatal("nonexistant judge should return nilError")
+		}
+
 		return nil
 	})
 }
@@ -106,12 +113,10 @@ func TestAccount(t *testing.T) {
 			t.Fatal("Account incorrect")
 		}
 
-		fooba, err := GetAccount(tx, []byte("fooba"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if fooba != nil {
-			t.Fatal("nonexistant counterparty should be nil")
+		_, err = GetAccount(tx, []byte("fooba"))
+		err, ok := err.(*nilError)
+		if !ok {
+			t.Fatal("nonexistant account should return nilError")
 		}
 
 		return nil
@@ -238,47 +243,12 @@ func TestChannel(t *testing.T) {
 			t.Fatal("Channel incorrect")
 		}
 
-		fooba, err := GetChannel(tx, "fooba")
-		if err != nil {
-			t.Fatal(err)
-		}
-		if fooba != nil {
-			t.Fatal("nonexistant channel should be nil")
+		_, err = GetChannel(tx, "fooba")
+		err, ok := err.(*nilError)
+		if !ok {
+			t.Fatal("nonexistant account should return nilError")
 		}
 
 		return nil
 	})
 }
-
-// func TestGetChannels(t *testing.T) {
-// 	db, err := bolt.Open("/tmp/test.db", 0600, nil)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	defer db.Close()
-// 	defer os.Remove("/tmp/test.db")
-
-// 	err = MakeBuckets(db)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-
-// 	db.Update(func(tx *bolt.Tx) error {
-// 		err := SetChannel(tx, ch)
-// 		if err != nil {
-// 			t.Fatal(err)
-// 		}
-
-// 		chs, err := GetChannels(tx)
-// 		if err != nil {
-// 			t.Fatal(err)
-// 		}
-
-// 		if !reflect.DeepEqual(*chs[0], *ch) {
-// 			t.Fatal(err)
-// 		}
-
-// 		return nil
-// 	})
-
-// }

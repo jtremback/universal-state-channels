@@ -107,12 +107,10 @@ func TestAccount(t *testing.T) {
 			t.Fatal("Account incorrect")
 		}
 
-		fooba, err := GetAccount(tx, []byte("fooba"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if fooba != nil {
-			t.Fatal("nonexistant counterparty should be nil")
+		_, err = GetAccount(tx, []byte("fooba"))
+		err, ok := err.(*nilError)
+		if !ok {
+			t.Fatal("nonexistant account should return nilError")
 		}
 
 		return nil
@@ -174,14 +172,11 @@ func TestCounterparty(t *testing.T) {
 			t.Fatal("Counterparty incorrect")
 		}
 
-		fooba, err := GetCounterparty(tx, []byte("fooba"))
-		if err != nil {
-			t.Fatal(err)
+		_, err = GetCounterparty(tx, []byte("fooba"))
+		err, ok := err.(*nilError)
+		if !ok {
+			t.Fatal("nonexistant counterparty should return nilError")
 		}
-		if fooba != nil {
-			t.Fatal("nonexistant counterparty should be nil")
-		}
-
 		return nil
 	})
 }
@@ -313,12 +308,10 @@ func TestChannel(t *testing.T) {
 			t.Fatal("Channel incorrect")
 		}
 
-		fooba, err := GetChannel(tx, "fooba")
-		if err != nil {
-			t.Fatal(err)
-		}
-		if fooba != nil {
-			t.Fatal("nonexistant channel should be nil")
+		_, err = GetChannel(tx, "fooba")
+		err, ok := err.(*nilError)
+		if !ok {
+			t.Fatal("nonexistant channel should return nilError")
 		}
 
 		return nil
