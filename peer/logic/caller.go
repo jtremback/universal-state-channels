@@ -287,7 +287,7 @@ func (a *CallerAPI) GetChannel(chId string) error {
 		}
 
 		json.Unmarshal(b, ch)
-		fmt.Println("GOT CHANNEL", ch)
+		fmt.Println("GOT CHANNEL", ch, b)
 		return nil
 	})
 }

@@ -24,12 +24,13 @@ func (a *PeerAPI) AddChannel(ev *wire.Envelope) error {
 			return err
 		}
 
-		ch, err := access.GetChannel(tx, otx.ChannelId)
-		if err != nil {
-			return err
-		}
-		if ch != nil {
+		_, nilErr := access.GetChannel(tx, otx.ChannelId)
+		if nilErr == nil {
 			return errors.New("channel already exists")
+		}
+		_, ok := nilErr.(*access.NilError)
+		if !ok {
+			return err
 		}
 
 		acct0, err := access.GetAccount(tx, otx.Pubkeys[0])
@@ -47,11 +48,11 @@ func (a *PeerAPI) AddChannel(ev *wire.Envelope) error {
 			return err
 		}
 
-		ch, err = judge.AddChannel(ev, otx, acct0, acct1)
+		ch, err := judge.AddChannel(ev, otx, acct0, acct1)
 
 		access.SetChannel(tx, ch)
 		if err != nil {
-			return errors.New("database error")
+			return err
 		}
 
 		return nil

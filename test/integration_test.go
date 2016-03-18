@@ -29,7 +29,6 @@ type CounterpartyClient struct {
 }
 
 func (client *CounterpartyClient) AddChannel(ev *wire.Envelope, address string) error {
-	fmt.Println("shibby")
 	err := client.Peer.CounterpartyAPI.AddChannel(ev)
 	if err != nil {
 		client.T.Fatal(err)
@@ -55,8 +54,11 @@ func (a *JudgeClient) GetFinalUpdateTx(address string) (*wire.Envelope, error) {
 	return nil, nil
 }
 
-func (a *JudgeClient) AddChannel(ev *wire.Envelope, address string) error {
-	fmt.Println("shibby")
+func (client *JudgeClient) AddChannel(ev *wire.Envelope, address string) error {
+	err := client.Judge.PeerAPI.AddChannel(ev)
+	if err != nil {
+		client.T.Fatal(err)
+	}
 	return nil
 }
 
@@ -81,13 +83,15 @@ func (a *JudgeClient) GetChannel(chId string, address string) ([]byte, error) {
 }
 
 func TestIntegration(t *testing.T) {
+	os.Remove("/tmp/p1.db")
+	os.Remove("/tmp/p2.db")
+	os.Remove("/tmp/j.db")
 	p1DB, err := bolt.Open("/tmp/p1.db", 0600, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	peerAccess.MakeBuckets(p1DB)
 	defer p1DB.Close()
-	defer os.Remove("/tmp/p1.db")
 
 	p2DB, err := bolt.Open("/tmp/p2.db", 0600, nil)
 	if err != nil {
@@ -95,7 +99,6 @@ func TestIntegration(t *testing.T) {
 	}
 	peerAccess.MakeBuckets(p2DB)
 	defer p2DB.Close()
-	defer os.Remove("/tmp/p2.db")
 
 	jDB, err := bolt.Open("/tmp/j.db", 0600, nil)
 	if err != nil {
@@ -103,7 +106,6 @@ func TestIntegration(t *testing.T) {
 	}
 	judgeAccess.MakeBuckets(jDB)
 	defer jDB.Close()
-	defer os.Remove("/tmp/j.db")
 
 	p1 := &Peer{
 		CallerAPI: &peerLogic.CallerAPI{
@@ -188,10 +190,10 @@ func TestIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// err = p2.CallerAPI.AcceptChannel(ch.ChannelId)
-	// if err != nil {
-	// 	t.Fatal(err)
-	// }
+	err = p2.CallerAPI.AcceptChannel(ch.ChannelId)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	err = p2.CallerAPI.GetChannel(ch.ChannelId)
 	if err != nil {
