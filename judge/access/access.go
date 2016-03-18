@@ -225,9 +225,9 @@ func PopulateChannel(tx *bolt.Tx, ch *core.Channel) error {
 		return err
 	}
 
-	ch.Account = acct
-	ch.Counterparty = cpt
+	ch.Accounts[0] = acct0
+	ch.Accounts[1] = acct1
 	ch.Judge = jd
 
 	return nil
-
+}
