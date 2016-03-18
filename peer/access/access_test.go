@@ -186,6 +186,54 @@ func TestCounterparty(t *testing.T) {
 	})
 }
 
+var ch = &core.Channel{
+	ChannelId: "xyz23",
+	Phase:     2,
+
+	OpeningTx:         &wire.OpeningTx{},
+	OpeningTxEnvelope: &wire.Envelope{},
+
+	MyProposedUpdateTx:         &wire.UpdateTx{},
+	MyProposedUpdateTxEnvelope: &wire.Envelope{},
+
+	TheirProposedUpdateTx:         &wire.UpdateTx{},
+	TheirProposedUpdateTxEnvelope: &wire.Envelope{},
+
+	LastFullUpdateTx:         &wire.UpdateTx{},
+	LastFullUpdateTxEnvelope: &wire.Envelope{},
+
+	Me:          0,
+	FollowOnTxs: []*wire.Envelope{},
+
+	Judge: &core.Judge{
+		Name:    "wrong",
+		Pubkey:  []byte{40, 40, 40},
+		Address: "stoops.com:3004",
+	},
+
+	Account: &core.Account{
+		Name:    "wrong",
+		Pubkey:  []byte{40, 40, 40},
+		Privkey: []byte{40, 40, 40},
+		Judge: &core.Judge{
+			Name:    "wrong",
+			Pubkey:  []byte{40, 40, 40},
+			Address: "stoops.com:3004",
+		},
+	},
+
+	Counterparty: &core.Counterparty{
+		Name:    "wrong",
+		Pubkey:  []byte{40, 40, 40},
+		Address: "stoops.com:3004",
+		Judge: &core.Judge{
+			Name:    "wrong",
+			Pubkey:  []byte{40, 40, 40},
+			Address: "stoops.com:3004",
+		},
+	},
+}
+
 func TestChannel(t *testing.T) {
 	db, err := bolt.Open("/tmp/test.db", 0600, nil)
 	if err != nil {
@@ -197,54 +245,6 @@ func TestChannel(t *testing.T) {
 	err = MakeBuckets(db)
 	if err != nil {
 		t.Fatal(err)
-	}
-
-	ch := &core.Channel{
-		ChannelId: "xyz23",
-		Phase:     2,
-
-		OpeningTx:         &wire.OpeningTx{},
-		OpeningTxEnvelope: &wire.Envelope{},
-
-		MyProposedUpdateTx:         &wire.UpdateTx{},
-		MyProposedUpdateTxEnvelope: &wire.Envelope{},
-
-		TheirProposedUpdateTx:         &wire.UpdateTx{},
-		TheirProposedUpdateTxEnvelope: &wire.Envelope{},
-
-		LastFullUpdateTx:         &wire.UpdateTx{},
-		LastFullUpdateTxEnvelope: &wire.Envelope{},
-
-		Me:          0,
-		FollowOnTxs: []*wire.Envelope{},
-
-		Judge: &core.Judge{
-			Name:    "wrong",
-			Pubkey:  []byte{40, 40, 40},
-			Address: "stoops.com:3004",
-		},
-
-		Account: &core.Account{
-			Name:    "wrong",
-			Pubkey:  []byte{40, 40, 40},
-			Privkey: []byte{40, 40, 40},
-			Judge: &core.Judge{
-				Name:    "wrong",
-				Pubkey:  []byte{40, 40, 40},
-				Address: "stoops.com:3004",
-			},
-		},
-
-		Counterparty: &core.Counterparty{
-			Name:    "wrong",
-			Pubkey:  []byte{40, 40, 40},
-			Address: "stoops.com:3004",
-			Judge: &core.Judge{
-				Name:    "wrong",
-				Pubkey:  []byte{40, 40, 40},
-				Address: "stoops.com:3004",
-			},
-		},
 	}
 
 	jd := &core.Judge{
@@ -309,8 +309,8 @@ func TestChannel(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if !reflect.DeepEqual(ch, ch2) {
-			t.Fatal("Counterparty incorrect")
+		if !reflect.DeepEqual(ch.Account.Judge, ch2.Account.Judge) {
+			t.Fatal("Channel incorrect")
 		}
 
 		fooba, err := GetChannel(tx, "fooba")
@@ -336,54 +336,6 @@ func TestGetChannels(t *testing.T) {
 	err = MakeBuckets(db)
 	if err != nil {
 		t.Fatal(err)
-	}
-
-	ch := &core.Channel{
-		ChannelId: "xyz23",
-		Phase:     2,
-
-		OpeningTx:         &wire.OpeningTx{},
-		OpeningTxEnvelope: &wire.Envelope{},
-
-		MyProposedUpdateTx:         &wire.UpdateTx{},
-		MyProposedUpdateTxEnvelope: &wire.Envelope{},
-
-		TheirProposedUpdateTx:         &wire.UpdateTx{},
-		TheirProposedUpdateTxEnvelope: &wire.Envelope{},
-
-		LastFullUpdateTx:         &wire.UpdateTx{},
-		LastFullUpdateTxEnvelope: &wire.Envelope{},
-
-		Me:          0,
-		FollowOnTxs: []*wire.Envelope{},
-
-		Judge: &core.Judge{
-			Name:    "wrong",
-			Pubkey:  []byte{40, 40, 40},
-			Address: "stoops.com:3004",
-		},
-
-		Account: &core.Account{
-			Name:    "wrong",
-			Pubkey:  []byte{40, 40, 40},
-			Privkey: []byte{40, 40, 40},
-			Judge: &core.Judge{
-				Name:    "wrong",
-				Pubkey:  []byte{40, 40, 40},
-				Address: "stoops.com:3004",
-			},
-		},
-
-		Counterparty: &core.Counterparty{
-			Name:    "wrong",
-			Pubkey:  []byte{40, 40, 40},
-			Address: "stoops.com:3004",
-			Judge: &core.Judge{
-				Name:    "wrong",
-				Pubkey:  []byte{40, 40, 40},
-				Address: "stoops.com:3004",
-			},
-		},
 	}
 
 	db.Update(func(tx *bolt.Tx) error {
