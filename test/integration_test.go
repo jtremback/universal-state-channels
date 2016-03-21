@@ -37,8 +37,8 @@ func (client *CounterpartyClient) AddChannel(ev *wire.Envelope, address string) 
 	return nil
 }
 
-func (client *CounterpartyClient) AddUpdateTx(ev *wire.Envelope, address string) error {
-	err := client.Peer.CounterpartyAPI.AddUpdateTx(ev)
+func (client *CounterpartyClient) AddProposedUpdateTx(ev *wire.Envelope, address string) error {
+	err := client.Peer.CounterpartyAPI.AddProposedUpdateTx(ev)
 	if err != nil {
 		client.T.Fatal(err)
 	}
@@ -76,7 +76,7 @@ func (client *JudgeClient) AddCancellationTx(ev *wire.Envelope, address string) 
 	return nil
 }
 
-func (client *JudgeClient) AddUpdateTx(ev *wire.Envelope, address string) error {
+func (client *JudgeClient) AddProposedUpdateTx(ev *wire.Envelope, address string) error {
 	fmt.Println("shibby")
 	return nil
 }

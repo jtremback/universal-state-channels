@@ -65,7 +65,7 @@ func (a *PeerHTTP) getChannel(w http.ResponseWriter, r *http.Request) {
 	a.send(w, data)
 }
 
-func (a *PeerHTTP) addUpdateTx(w http.ResponseWriter, r *http.Request) {
+func (a *PeerHTTP) addProposedUpdateTx(w http.ResponseWriter, r *http.Request) {
 	if r.Body == nil {
 		a.fail(w, "no body", 500)
 		return
@@ -79,7 +79,7 @@ func (a *PeerHTTP) addUpdateTx(w http.ResponseWriter, r *http.Request) {
 	ev := &wire.Envelope{}
 	proto.Unmarshal(b, ev)
 
-	err = a.Logic.AddUpdateTx(ev)
+	err = a.Logic.AddProposedUpdateTx(ev)
 	if err != nil {
 		a.fail(w, "server error", 500)
 	}

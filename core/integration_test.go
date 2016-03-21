@@ -131,7 +131,7 @@ func Test(t *testing.T) {
 
 	// --- Send to second party ---
 
-	err = ch2.AddUpdateTx(utxEv, utx)
+	err = ch2.AddProposedUpdateTx(utxEv, utx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,7 +151,7 @@ func Test(t *testing.T) {
 
 	// --- Send to judge ---
 
-	err = jch.AddUpdateTx(utxEv, utx)
+	err = jch.AddProposedUpdateTx(utxEv, utx)
 	if err != nil {
 		t.Fatal(err)
 	}

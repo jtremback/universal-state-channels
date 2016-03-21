@@ -31,6 +31,6 @@ func (a *CounterpartyHTTP) AddChannel(ev *wire.Envelope, address string) error {
 	return a.sendEnvelope(ev, address+"/add_channel")
 }
 
-func (a *CounterpartyHTTP) AddUpdateTx(ev *wire.Envelope, address string) error {
+func (a *CounterpartyHTTP) AddProposedUpdateTx(ev *wire.Envelope, address string) error {
 	return a.sendEnvelope(ev, address+"/add_update_tx")
 }

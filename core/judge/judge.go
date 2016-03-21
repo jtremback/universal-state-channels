@@ -163,7 +163,7 @@ func (ch *Channel) AddCancellationTx(ev *wire.Envelope) error {
 	return nil
 }
 
-func (ch *Channel) AddUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
+func (ch *Channel) AddProposedUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
 	if ch.Phase != OPEN {
 		return errors.New("channel not OPEN")
 	}

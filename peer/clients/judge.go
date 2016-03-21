@@ -80,7 +80,7 @@ func (a *JudgeHTTP) AddCancellationTx(ev *wire.Envelope, address string) error {
 	return a.sendEnvelope(ev, address+"/add_cancellation_tx")
 }
 
-func (a *JudgeHTTP) AddUpdateTx(ev *wire.Envelope, address string) error {
+func (a *JudgeHTTP) AddProposedUpdateTx(ev *wire.Envelope, address string) error {
 	return a.sendEnvelope(ev, address+"/add_update_tx")
 }
 

@@ -69,7 +69,7 @@ func (a *CounterpartyAPI) AddChannel(ev *wire.Envelope) error {
 	return nil
 }
 
-func (a *CounterpartyAPI) AddUpdateTx(ev *wire.Envelope) error {
+func (a *CounterpartyAPI) AddProposedUpdateTx(ev *wire.Envelope) error {
 	return a.DB.Update(func(tx *bolt.Tx) error {
 		utx := &wire.UpdateTx{}
 		err := proto.Unmarshal(ev.Payload, utx)
@@ -81,7 +81,7 @@ func (a *CounterpartyAPI) AddUpdateTx(ev *wire.Envelope) error {
 			return err
 		}
 
-		err = ch.AddUpdateTx(ev, utx)
+		err = ch.AddProposedUpdateTx(ev, utx)
 		if err != nil {
 			return err
 		}

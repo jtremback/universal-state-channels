@@ -20,14 +20,14 @@ type JudgeClient interface {
 	GetFinalUpdateTx(string) (*wire.Envelope, error)
 	AddChannel(*wire.Envelope, string) error
 	AddCancellationTx(*wire.Envelope, string) error
-	AddUpdateTx(*wire.Envelope, string) error
+	AddProposedUpdateTx(*wire.Envelope, string) error
 	AddFollowOnTx(*wire.Envelope, string) error
 	GetChannel(string, string) ([]byte, error)
 }
 
 type CounterpartyClient interface {
 	AddChannel(*wire.Envelope, string) error
-	AddUpdateTx(*wire.Envelope, string) error
+	AddProposedUpdateTx(*wire.Envelope, string) error
 	AddFullUpdateTx(*wire.Envelope, string) error
 }
 
@@ -353,7 +353,7 @@ func (a *CallerAPI) NewUpdateTx(state []byte, channelID string, fast bool) error
 
 		ch.SignProposedUpdateTx(ev, utx)
 
-		err = a.CounterpartyClient.AddUpdateTx(ev, ch.Counterparty.Address)
+		err = a.CounterpartyClient.AddProposedUpdateTx(ev, ch.Counterparty.Address)
 		if err != nil {
 			return err
 		}
@@ -420,7 +420,7 @@ func (a *CallerAPI) CheckFinalUpdateTx(channelID string) error {
 		}
 
 		if newerUpdateTx != nil {
-			err = a.JudgeClient.AddUpdateTx(newerUpdateTx, ch.Judge.Address)
+			err = a.JudgeClient.AddProposedUpdateTx(newerUpdateTx, ch.Judge.Address)
 			if err != nil {
 				return err
 			}

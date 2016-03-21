@@ -262,7 +262,7 @@ func (ch *Channel) CosignProposedUpdateTx() *wire.Envelope {
 	return ev
 }
 
-func (ch *Channel) AddUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
+func (ch *Channel) AddProposedUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
 	if !(ch.Phase == OPEN || ch.Phase == PENDING_CLOSED) {
 		return errors.New("channel not OPEN or PENDING_CLOSED")
 	}
