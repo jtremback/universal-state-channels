@@ -301,8 +301,10 @@ func (ch *Channel) AddFullUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error 
 	if utx.ChannelId != ch.OpeningTx.ChannelId {
 		return errors.New("channel id incorrect")
 	}
-	if utx.SequenceNumber >= ch.LastFullUpdateTx.SequenceNumber {
-		return errors.New("sequence number too low")
+	if ch.LastFullUpdateTx != nil {
+		if utx.SequenceNumber > ch.LastFullUpdateTx.SequenceNumber {
+			return errors.New("sequence number too low")
+		}
 	}
 
 	ch.LastFullUpdateTx = utx
