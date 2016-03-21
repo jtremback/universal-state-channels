@@ -63,6 +63,11 @@ func (client *JudgeClient) GetFinalUpdateTx(address string) (*wire.Envelope, err
 	return nil, nil
 }
 
+func (client *JudgeClient) AddFinalUpdateTx(address string) (*wire.Envelope, error) {
+	fmt.Println("shibby")
+	return nil, nil
+}
+
 func (client *JudgeClient) AddChannel(ev *wire.Envelope, address string) error {
 	err := client.Judge.PeerAPI.AddChannel(ev)
 	if err != nil {
@@ -252,6 +257,8 @@ func TestIntegration(t *testing.T) {
 	}
 
 	p1.CallerAPI.CosignProposedUpdateTx("shibby")
+
+	p1.CallerAPI.SubmitFinalUpdateTx("shibby")
 
 	chs, err := p2.CallerAPI.ViewChannels()
 	if err != nil {

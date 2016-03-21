@@ -20,7 +20,7 @@ type JudgeClient interface {
 	GetFinalUpdateTx(string) (*wire.Envelope, error)
 	AddChannel(*wire.Envelope, string) error
 	AddCancellationTx(*wire.Envelope, string) error
-	AddProposedUpdateTx(*wire.Envelope, string) error
+	AddFinalUpdateTx(*wire.Envelope, string) error
 	AddFollowOnTx(*wire.Envelope, string) error
 	GetChannel(string, string) ([]byte, error)
 }
@@ -157,28 +157,6 @@ func (a *CallerAPI) ViewChannels() ([]*core.Channel, error) {
 	return chs, nil
 }
 
-// func (a *CallerAPI) CheckChannels() ([]*core.Channel, error) {
-// 	var chs []*core.Channel
-// 	var err error
-// 	err = a.DB.Update(func(tx *bolt.Tx) error {
-// 		accts, err = access.GetAccounts(tx)
-// 		if err != nil {
-// 			return err
-// 		}
-
-// 		for _, acct := range accts {
-// 			a.JudgeClient.GetChannels()
-// 		}
-
-// 		return nil
-// 	})
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	return chs, nil
-// }
-
 // ProposeChannel is called to propose a new channel. It creates and signs an
 // OpeningTx, sends it to the Counterparty and saves it in a new Channel.
 func (a *CallerAPI) ProposeChannel(
@@ -287,11 +265,6 @@ func (a *CallerAPI) CheckChannel(chId string) error {
 			}
 		}
 
-		// // ch.OpeningTx = jch.OpeningTx
-		// // ch.OpeningTxEnvelope = jch.OpeningTxEnvelope
-		// // ch.LastFullUpdateTx = jch.LastFullUpdateTx
-		// // ch.LastFullUpdateTxEnvelope = jch.LastFullUpdateTxEnvelope
-
 		err = access.SetChannel(tx, ch)
 		if err != nil {
 			return err
@@ -300,38 +273,6 @@ func (a *CallerAPI) CheckChannel(chId string) error {
 		return nil
 	})
 }
-
-// // OpenChannel is called on Channels which are in phase PENDING_OPEN. It checks
-// // an OpeningTx signed by the Judge, and if everything is correct puts the Channel
-// // into phase OPEN.
-// func (a *CallerAPI) OpenChannel(ev *wire.Envelope) error {
-// 	var err error
-// 	return a.DB.Update(func(tx *bolt.Tx) error {
-// 		ch := &core.Channel{}
-// 		otx := &wire.OpeningTx{}
-// 		err = proto.Unmarshal(ev.Payload, otx)
-// 		if err != nil {
-// 			return err
-// 		}
-
-// 		ch, err = access.GetChannel(tx, otx.ChannelId)
-// 		if err != nil {
-// 			return err
-// 		}
-
-// 		ch.Open(ev, otx)
-// 		if err != nil {
-// 			return err
-// 		}
-
-// 		err = access.SetChannel(tx, ch)
-// 		if err != nil {
-// 			return err
-// 		}
-
-// 		return nil
-// 	})
-// }
 
 // NewUpdateTx is called on Channels which are in phase OPEN. It makes a new UpdateTx,
 // signs it, saves it as MyProposedUpdateTx, and sends it to the Counterparty.
@@ -392,11 +333,26 @@ func (a *CallerAPI) CosignProposedUpdateTx(channelID string) error {
 	})
 }
 
+func (a *CallerAPI) SubmitFinalUpdateTx(channelID string) error {
+	return a.DB.View(func(tx *bolt.Tx) error {
+		ch, err := access.GetChannel(tx, channelID)
+		if err != nil {
+			return err
+		}
+
+		err = a.JudgeClient.AddFinalUpdateTx(newerUpdateTx, ch.Judge.Address)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+}
+
 // CheckFinalUpdateTx checks with the Judge to see if the Counterparty has posted
 // an UpdateTx. If the UpdateTx from the Judge has a lower SequenceNumber than
 // LastFullUpdateTx, we send LastFullUpdateTx to the Judge.
 func (a *CallerAPI) CheckFinalUpdateTx(channelID string) error {
-	// var err error
 	return a.DB.Update(func(tx *bolt.Tx) error {
 		ch, err := access.GetChannel(tx, channelID)
 		if err != nil {
@@ -420,7 +376,7 @@ func (a *CallerAPI) CheckFinalUpdateTx(channelID string) error {
 		}
 
 		if newerUpdateTx != nil {
-			err = a.JudgeClient.AddProposedUpdateTx(newerUpdateTx, ch.Judge.Address)
+			err = a.JudgeClient.AddFinalUpdateTx(newerUpdateTx, ch.Judge.Address)
 			if err != nil {
 				return err
 			}
