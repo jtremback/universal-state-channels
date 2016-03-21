@@ -251,9 +251,9 @@ func TestIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	p1.CallerAPI.CosignUpdateTx("shibby")
+	p1.CallerAPI.CosignProposedUpdateTx("shibby")
 
-	chs, err := p1.CallerAPI.ViewChannels()
+	chs, err := p2.CallerAPI.ViewChannels()
 	if err != nil {
 		t.Fatal(err)
 	}

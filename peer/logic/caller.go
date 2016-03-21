@@ -367,9 +367,9 @@ func (a *CallerAPI) NewUpdateTx(state []byte, channelID string, fast bool) error
 	})
 }
 
-// CosignUpdateTx cosigns the Channel's TheirProposedUpdateTx, saves it to
+// CosignProposedUpdateTx cosigns the Channel's TheirProposedUpdateTx, saves it to
 // LastFullUpdateTx, and sends it to the Counterparty.
-func (a *CallerAPI) CosignUpdateTx(channelID string) error {
+func (a *CallerAPI) CosignProposedUpdateTx(channelID string) error {
 	return a.DB.Update(func(tx *bolt.Tx) error {
 		ch, err := access.GetChannel(tx, channelID)
 		if err != nil {
