@@ -333,16 +333,25 @@ func (a *CallerAPI) CosignProposedUpdateTx(channelID string) error {
 	})
 }
 
-func (a *CallerAPI) SubmitFinalUpdateTx(channelID string) error {
+func (a *CallerAPI) CloseChannel(channelID string) error {
 	return a.DB.View(func(tx *bolt.Tx) error {
 		ch, err := access.GetChannel(tx, channelID)
 		if err != nil {
 			return err
 		}
 
-		err = a.JudgeClient.AddFinalUpdateTx(newerUpdateTx, ch.Judge.Address)
-		if err != nil {
-			return err
+		if ch.LastFullUpdateTx == nil {
+			ev, err := core.SerializeCancellationTx(ch.NewCancellationTx())
+			err = a.JudgeClient.AddCancellationTx(ev, ch.Judge.Address)
+			if err != nil {
+				return err
+			}
+		} else {
+			err = a.JudgeClient.AddFinalUpdateTx(ch.LastFullUpdateTxEnvelope, ch.Judge.Address)
+			if err != nil {
+				return err
+			}
+
 		}
 
 		return nil

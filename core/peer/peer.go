@@ -343,6 +343,23 @@ func (ch *Channel) AddFinalUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) (*wir
 	return nil, nil
 }
 
+func (ch *Channel) NewCancellationTx() *wire.CancellationTx {
+	return &wire.CancellationTx{
+		ChannelId: ch.ChannelId,
+	}
+}
+
+func SerializeCancellationTx(ctx *wire.CancellationTx) (*wire.Envelope, error) {
+	data, err := proto.Marshal(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &wire.Envelope{
+		Payload: data,
+	}, nil
+}
+
 func (ch *Channel) NewFollowOnTx(state []byte) *wire.FollowOnTx {
 	return &wire.FollowOnTx{
 		ChannelId: ch.ChannelId,

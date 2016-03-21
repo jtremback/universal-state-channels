@@ -86,6 +86,25 @@ func (a *CallerAPI) AcceptChannel(chID string) error {
 	})
 }
 
+func (a *CallerAPI) ViewChannels() ([]*core.Channel, error) {
+	var chs []*core.Channel
+	var err error
+	err = a.DB.View(func(tx *bolt.Tx) error {
+		chs, err = access.GetChannels(tx)
+
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return chs, nil
+}
+
 func (a *CallerAPI) CloseChannel(chID string, i int) error {
 	var err error
 	return a.DB.Update(func(tx *bolt.Tx) error {

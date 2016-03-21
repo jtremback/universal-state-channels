@@ -49,7 +49,7 @@ const (
 	PENDING_OPEN Phase = 1
 	OPEN         Phase = 2
 	// PENDING_CLOSED Phase = 3
-	CLOSED Phase = 4
+	CLOSED Phase = 3
 )
 
 type Channel struct {
@@ -151,15 +151,14 @@ func (ch *Channel) AddCancellationTx(ev *wire.Envelope) error {
 	if len(ev.Signatures) != 1 {
 		return errors.New("wrong number of signatures")
 	}
-	if !ed25519.Verify(sliceTo32Byte(ch.Accounts[0].Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[0])) ||
+	if !ed25519.Verify(sliceTo32Byte(ch.Accounts[0].Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[0])) &&
 		!ed25519.Verify(sliceTo32Byte(ch.Accounts[1].Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
 		return errors.New("signature not valid")
 	}
 
-	if ch.Phase == OPEN {
-		ch.CancellationTxEnvelope = ev
-		ch.CloseTime = time.Now()
-	}
+	ch.CancellationTxEnvelope = ev
+	ch.CloseTime = time.Now()
+
 	return nil
 }
 

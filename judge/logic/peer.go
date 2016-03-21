@@ -85,7 +85,7 @@ func (a *PeerAPI) GetChannel(chId string) (*core.Channel, error) {
 	return ch, nil
 }
 
-func (a *PeerAPI) AddProposedUpdateTx(ev *wire.Envelope) error {
+func (a *PeerAPI) AddFinalUpdateTx(ev *wire.Envelope) error {
 	var err error
 	err = a.DB.Update(func(tx *bolt.Tx) error {
 		utx := &wire.UpdateTx{}
@@ -99,7 +99,7 @@ func (a *PeerAPI) AddProposedUpdateTx(ev *wire.Envelope) error {
 			return err
 		}
 
-		err = ch.AddProposedUpdateTx(ev, utx)
+		err = ch.AddFinalUpdateTx(ev, utx)
 		if err != nil {
 			return err
 		}
