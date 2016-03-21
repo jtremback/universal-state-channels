@@ -198,7 +198,7 @@ func (ch *Channel) AddFollowOnTx(ev *wire.Envelope) error {
 	return nil
 }
 
-// func (ch *Channel) Close() {
-// 	ch.Judge.AppendSignature(ch.LastFullUpdateTxEnvelope)
-// 	ch.Phase = CLOSED
+// func (ch *Channel) Close() error {
+// 	ut := time.Unix(ch.OpeningTx.HoldPeriod, 0)
+// 	return nil
 // }

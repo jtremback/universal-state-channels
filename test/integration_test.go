@@ -64,12 +64,18 @@ func (client *JudgeClient) GetFinalUpdateTx(address string) (*wire.Envelope, err
 }
 
 func (client *JudgeClient) AddFinalUpdateTx(ev *wire.Envelope, address string) error {
-	client.Judge.PeerAPI.AddFinalUpdateTx(ev)
+	err := client.Judge.PeerAPI.AddFinalUpdateTx(ev)
+	if err != nil {
+		client.T.Fatal(err)
+	}
 	return nil
 }
 
 func (client *JudgeClient) AddCancellationTx(ev *wire.Envelope, address string) error {
-	client.Judge.PeerAPI.AddCancellationTx(ev)
+	err := client.Judge.PeerAPI.AddCancellationTx(ev)
+	if err != nil {
+		client.T.Fatal(err)
+	}
 	return nil
 }
 
@@ -251,20 +257,21 @@ func TestIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	p1.CallerAPI.CosignProposedUpdateTx("shibby")
-	p1.CallerAPI.CloseChannel("shibby")
-
-	err = p1.CallerAPI.CheckChannel(ch.ChannelId)
+	err = p1.CallerAPI.CloseChannel("shibby")
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = p1.CallerAPI.CloseChannel("shibby")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = p2.CallerAPI.CheckChannel(ch.ChannelId)
+	err = j.CallerAPI.CloseChannel("shibby")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	chs, err := j.CallerAPI.
+	chs, err := j.CallerAPI.ViewChannels()
 	if err != nil {
 		t.Fatal(err)
 	}

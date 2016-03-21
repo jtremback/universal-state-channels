@@ -342,6 +342,7 @@ func (a *CallerAPI) CloseChannel(channelID string) error {
 
 		if ch.LastFullUpdateTx == nil {
 			ev, err := core.SerializeCancellationTx(ch.NewCancellationTx())
+			ch.Account.AppendSignature(ev)
 			err = a.JudgeClient.AddCancellationTx(ev, ch.Judge.Address)
 			if err != nil {
 				return err
