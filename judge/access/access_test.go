@@ -123,6 +123,47 @@ func TestAccount(t *testing.T) {
 	})
 }
 
+var ch = &core.Channel{
+	ChannelId: "xyz23",
+	Phase:     2,
+
+	OpeningTx:         &wire.OpeningTx{},
+	OpeningTxEnvelope: &wire.Envelope{},
+
+	LastFullUpdateTx:         &wire.UpdateTx{},
+	LastFullUpdateTxEnvelope: &wire.Envelope{},
+
+	FollowOnTxs: []*wire.Envelope{},
+
+	Judge: &core.Judge{
+		Name:    "wrong",
+		Pubkey:  []byte{40, 40, 40},
+		Privkey: []byte{4, 20},
+	},
+
+	Accounts: []*core.Account{
+		&core.Account{
+			Name:   "wrong",
+			Pubkey: []byte{0, 0, 0},
+			Judge: &core.Judge{
+				Name:    "wrong",
+				Pubkey:  []byte{40, 40, 40},
+				Privkey: []byte{4, 20},
+			},
+		},
+
+		&core.Account{
+			Name:   "wrong",
+			Pubkey: []byte{1, 1, 1},
+			Judge: &core.Judge{
+				Name:    "wrong",
+				Pubkey:  []byte{40, 40, 40},
+				Privkey: []byte{4, 20},
+			},
+		},
+	},
+}
+
 func TestChannel(t *testing.T) {
 	db, err := bolt.Open("/tmp/test.db", 0600, nil)
 	if err != nil {
@@ -134,47 +175,6 @@ func TestChannel(t *testing.T) {
 	err = MakeBuckets(db)
 	if err != nil {
 		t.Fatal(err)
-	}
-
-	ch := &core.Channel{
-		ChannelId: "xyz23",
-		Phase:     2,
-
-		OpeningTx:         &wire.OpeningTx{},
-		OpeningTxEnvelope: &wire.Envelope{},
-
-		LastFullUpdateTx:         &wire.UpdateTx{},
-		LastFullUpdateTxEnvelope: &wire.Envelope{},
-
-		FollowOnTxs: []*wire.Envelope{},
-
-		Judge: &core.Judge{
-			Name:    "wrong",
-			Pubkey:  []byte{40, 40, 40},
-			Privkey: []byte{4, 20},
-		},
-
-		Accounts: []*core.Account{
-			&core.Account{
-				Name:   "wrong",
-				Pubkey: []byte{0, 0, 0},
-				Judge: &core.Judge{
-					Name:    "wrong",
-					Pubkey:  []byte{40, 40, 40},
-					Privkey: []byte{4, 20},
-				},
-			},
-
-			&core.Account{
-				Name:   "wrong",
-				Pubkey: []byte{1, 1, 1},
-				Judge: &core.Judge{
-					Name:    "wrong",
-					Pubkey:  []byte{40, 40, 40},
-					Privkey: []byte{4, 20},
-				},
-			},
-		},
 	}
 
 	jd := &core.Judge{
@@ -251,4 +251,39 @@ func TestChannel(t *testing.T) {
 
 		return nil
 	})
+}
+
+func TestGetChannels(t *testing.T) {
+	db, err := bolt.Open("/tmp/test.db", 0600, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	defer os.Remove("/tmp/test.db")
+
+	err = MakeBuckets(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	db.Update(func(tx *bolt.Tx) error {
+		err := SetChannel(tx, ch)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		chs, err := GetChannels(tx)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		chs[0].CloseTime = time.Time{}
+
+		if !reflect.DeepEqual(*chs[0], *ch) {
+			t.Fatal(err)
+		}
+
+		return nil
+	})
+
 }

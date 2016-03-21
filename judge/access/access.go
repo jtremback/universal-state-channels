@@ -3,6 +3,7 @@ package access
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/boltdb/bolt"
@@ -200,4 +201,30 @@ func PopulateChannel(tx *bolt.Tx, ch *core.Channel) error {
 	ch.Judge = jd
 
 	return nil
+}
+
+func GetChannels(tx *bolt.Tx) ([]*core.Channel, error) {
+	var err error
+	chs := []*core.Channel{}
+
+	err = tx.Bucket(Channels).ForEach(func(k, v []byte) error {
+		ch := &core.Channel{}
+		err = json.Unmarshal(v, ch)
+		if err != nil {
+			return err
+		}
+
+		err = PopulateChannel(tx, ch)
+		if err != nil {
+			return errors.New("error populating channel")
+		}
+
+		chs = append(chs, ch)
+
+		return nil
+	})
+	if err != nil {
+		return nil, errors.New("database error")
+	}
+	return chs, nil
 }
