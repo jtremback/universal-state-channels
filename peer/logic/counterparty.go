@@ -70,15 +70,12 @@ func (a *CounterpartyAPI) AddChannel(ev *wire.Envelope) error {
 }
 
 func (a *CounterpartyAPI) AddUpdateTx(ev *wire.Envelope) error {
-	var err error
-
-	utx := &wire.UpdateTx{}
-	err = proto.Unmarshal(ev.Payload, utx)
-	if err != nil {
-		return err
-	}
-
-	err = a.DB.Update(func(tx *bolt.Tx) error {
+	return a.DB.Update(func(tx *bolt.Tx) error {
+		utx := &wire.UpdateTx{}
+		err := proto.Unmarshal(ev.Payload, utx)
+		if err != nil {
+			return err
+		}
 		ch, err := access.GetChannel(tx, utx.ChannelId)
 		if err != nil {
 			return err
@@ -96,9 +93,30 @@ func (a *CounterpartyAPI) AddUpdateTx(ev *wire.Envelope) error {
 
 		return nil
 	})
-	if err != nil {
-		return err
-	}
+}
 
-	return nil
+func (a *CounterpartyAPI) AddFullUpdateTx(ev *wire.Envelope) error {
+	return a.DB.Update(func(tx *bolt.Tx) error {
+		utx := &wire.UpdateTx{}
+		err := proto.Unmarshal(ev.Payload, utx)
+		if err != nil {
+			return err
+		}
+		ch, err := access.GetChannel(tx, utx.ChannelId)
+		if err != nil {
+			return err
+		}
+
+		err = ch.AddFullUpdateTx(ev, utx)
+		if err != nil {
+			return err
+		}
+
+		access.SetChannel(tx, ch)
+		if err != nil {
+			return errors.New("database error")
+		}
+
+		return nil
+	})
 }

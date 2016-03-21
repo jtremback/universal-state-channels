@@ -45,12 +45,20 @@ func (client *CounterpartyClient) AddUpdateTx(ev *wire.Envelope, address string)
 	return nil
 }
 
+func (client *CounterpartyClient) AddFullUpdateTx(ev *wire.Envelope, address string) error {
+	err := client.Peer.CounterpartyAPI.AddFullUpdateTx(ev)
+	if err != nil {
+		client.T.Fatal(err)
+	}
+	return nil
+}
+
 type JudgeClient struct {
 	Judge *Judge
 	T     *testing.T
 }
 
-func (a *JudgeClient) GetFinalUpdateTx(address string) (*wire.Envelope, error) {
+func (client *JudgeClient) GetFinalUpdateTx(address string) (*wire.Envelope, error) {
 	fmt.Println("shibby")
 	return nil, nil
 }
@@ -60,28 +68,36 @@ func (client *JudgeClient) AddChannel(ev *wire.Envelope, address string) error {
 	if err != nil {
 		client.T.Fatal(err)
 	}
-	fmt.Println("JudgeClient addChannel")
 	return nil
 }
 
-func (a *JudgeClient) AddCancellationTx(ev *wire.Envelope, address string) error {
+func (client *JudgeClient) AddCancellationTx(ev *wire.Envelope, address string) error {
 	fmt.Println("shibby")
 	return nil
 }
 
-func (a *JudgeClient) AddUpdateTx(ev *wire.Envelope, address string) error {
+func (client *JudgeClient) AddUpdateTx(ev *wire.Envelope, address string) error {
 	fmt.Println("shibby")
 	return nil
 }
 
-func (a *JudgeClient) AddFollowOnTx(ev *wire.Envelope, address string) error {
+func (client *JudgeClient) AddFollowOnTx(ev *wire.Envelope, address string) error {
 	fmt.Println("shibby")
 	return nil
 }
 
-func (a *JudgeClient) GetChannel(chId string, address string) ([]byte, error) {
-	fmt.Println("shibby")
-	return nil, nil
+func (client *JudgeClient) GetChannel(chId string, address string) ([]byte, error) {
+	jch, err := client.Judge.PeerAPI.GetChannel(chId)
+	if err != nil {
+		client.T.Fatal(err)
+	}
+
+	b, err := json.Marshal(jch)
+	if err != nil {
+		client.T.Fatal(err)
+	}
+
+	return b, nil
 }
 
 func TestIntegration(t *testing.T) {
@@ -207,15 +223,35 @@ func TestIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = p1.CallerAPI.GetChannel(ch.ChannelId)
+	err = j.CallerAPI.AcceptChannel(ch.ChannelId)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = p2.CallerAPI.GetChannel(ch.ChannelId)
+	err = p1.CallerAPI.CheckChannel(ch.ChannelId)
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	err = p2.CallerAPI.CheckChannel(ch.ChannelId)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	p1.CallerAPI.NewUpdateTx([]byte{4, 30}, "shibby", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p2.CallerAPI.NewUpdateTx([]byte{4, 40}, "shibby", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p1.CallerAPI.NewUpdateTx([]byte{4, 50}, "shibby", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	p1.CallerAPI.CosignUpdateTx("shibby")
 
 	chs, err := p1.CallerAPI.ViewChannels()
 	if err != nil {
@@ -233,9 +269,4 @@ func TestIntegration(t *testing.T) {
 	}
 
 	fmt.Println(string(b))
-
-	p1.CallerAPI.NewUpdateTx([]byte{4, 30}, "shibby", false)
-	if err != nil {
-		t.Fatal(err)
-	}
 }

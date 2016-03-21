@@ -64,6 +64,7 @@ func (a *PeerAPI) AddChannel(ev *wire.Envelope) error {
 	return nil
 }
 
+// Gets a channel for a peer and sanitizes it to be sent to them.
 func (a *PeerAPI) GetChannel(chId string) (*core.Channel, error) {
 	var err error
 	ch := &core.Channel{}
@@ -78,6 +79,8 @@ func (a *PeerAPI) GetChannel(chId string) (*core.Channel, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	ch.Sanitize()
 
 	return ch, nil
 }

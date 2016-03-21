@@ -2,7 +2,6 @@ package logic
 
 import (
 	"encoding/json"
-	"errors"
 
 	"github.com/boltdb/bolt"
 	"github.com/golang/protobuf/proto"
@@ -29,6 +28,7 @@ type JudgeClient interface {
 type CounterpartyClient interface {
 	AddChannel(*wire.Envelope, string) error
 	AddUpdateTx(*wire.Envelope, string) error
+	AddFullUpdateTx(*wire.Envelope, string) error
 }
 
 func (a *CallerAPI) NewAccount(
@@ -49,7 +49,7 @@ func (a *CallerAPI) NewAccount(
 		}
 		err = access.SetAccount(tx, acct)
 		if err != nil {
-			return errors.New("database error")
+			return err
 		}
 
 		return nil
@@ -82,7 +82,7 @@ func (a *CallerAPI) AddAccount(
 
 		err = access.SetAccount(tx, acct)
 		if err != nil {
-			return errors.New("database error")
+			return err
 		}
 
 		return nil
@@ -110,7 +110,7 @@ func (a *CallerAPI) AddCounterparty(
 
 		err = access.SetCounterparty(tx, cpt)
 		if err != nil {
-			return errors.New("database error")
+			return err
 		}
 
 		return nil
@@ -131,7 +131,7 @@ func (a *CallerAPI) AddJudge(
 
 		err := access.SetJudge(tx, jd)
 		if err != nil {
-			return errors.New("database error")
+			return err
 		}
 
 		return nil
@@ -145,7 +145,7 @@ func (a *CallerAPI) ViewChannels() ([]*core.Channel, error) {
 		chs, err = access.GetChannels(tx)
 
 		if err != nil {
-			return errors.New("database error")
+			return err
 		}
 
 		return nil
@@ -163,7 +163,7 @@ func (a *CallerAPI) ViewChannels() ([]*core.Channel, error) {
 // 	err = a.DB.Update(func(tx *bolt.Tx) error {
 // 		accts, err = access.GetAccounts(tx)
 // 		if err != nil {
-// 			return errors.New("database error")
+// 			return err
 // 		}
 
 // 		for _, acct := range accts {
@@ -202,19 +202,19 @@ func (a *CallerAPI) ProposeChannel(
 
 		otx, err := acct.NewOpeningTx(channelId, cpt, state, holdPeriod)
 		if err != nil {
-			return errors.New("server error")
+			return err
 		}
 
 		ev, err := core.SerializeOpeningTx(otx)
 		if err != nil {
-			return errors.New("server error")
+			return err
 		}
 
 		acct.AppendSignature(ev)
 
 		ch, err = core.NewChannel(ev, otx, acct, cpt)
 		if err != nil {
-			return errors.New("server error")
+			return err
 		}
 
 		err = a.CounterpartyClient.AddChannel(ev, cpt.Address)
@@ -224,7 +224,7 @@ func (a *CallerAPI) ProposeChannel(
 
 		err = access.SetChannel(tx, ch)
 		if err != nil {
-			return errors.New("database error")
+			return err
 		}
 
 		return nil
@@ -263,11 +263,10 @@ func (a *CallerAPI) AcceptChannel(channelID string) error {
 	})
 }
 
-func (a *CallerAPI) GetChannel(chId string) error {
-	var err error
+// This gets the channel from the judge and checks if it has changed, and does stuff if it has
+func (a *CallerAPI) CheckChannel(chId string) error {
 	return a.DB.Update(func(tx *bolt.Tx) error {
-		var ch *core.Channel
-		ch, err = access.GetChannel(tx, chId)
+		ch, err := access.GetChannel(tx, chId)
 		if err != nil {
 			return err
 		}
@@ -277,43 +276,62 @@ func (a *CallerAPI) GetChannel(chId string) error {
 			return err
 		}
 
-		json.Unmarshal(b, ch)
+		jch := &core.Channel{}
+		json.Unmarshal(b, jch)
 
-		return nil
-	})
-}
-
-// OpenChannel is called on Channels which are in phase PENDING_OPEN. It checks
-// an OpeningTx signed by the Judge, and if everything is correct puts the Channel
-// into phase OPEN.
-func (a *CallerAPI) OpenChannel(ev *wire.Envelope) error {
-	var err error
-	return a.DB.Update(func(tx *bolt.Tx) error {
-		ch := &core.Channel{}
-		otx := &wire.OpeningTx{}
-		err = proto.Unmarshal(ev.Payload, otx)
-		if err != nil {
-			return err
+		// This means that the judge has signed the channel
+		if ch.Phase == core.PENDING_OPEN && jch.Phase == core.OPEN {
+			ch.Open(jch.OpeningTxEnvelope, jch.OpeningTx)
+			if err != nil {
+				return err
+			}
 		}
 
-		ch, err = access.GetChannel(tx, otx.ChannelId)
-		if err != nil {
-			return err
-		}
-
-		ch.Open(ev, otx)
-		if err != nil {
-			return err
-		}
+		// // ch.OpeningTx = jch.OpeningTx
+		// // ch.OpeningTxEnvelope = jch.OpeningTxEnvelope
+		// // ch.LastFullUpdateTx = jch.LastFullUpdateTx
+		// // ch.LastFullUpdateTxEnvelope = jch.LastFullUpdateTxEnvelope
 
 		err = access.SetChannel(tx, ch)
 		if err != nil {
-			return errors.New("database error")
+			return err
 		}
 
 		return nil
 	})
 }
+
+// // OpenChannel is called on Channels which are in phase PENDING_OPEN. It checks
+// // an OpeningTx signed by the Judge, and if everything is correct puts the Channel
+// // into phase OPEN.
+// func (a *CallerAPI) OpenChannel(ev *wire.Envelope) error {
+// 	var err error
+// 	return a.DB.Update(func(tx *bolt.Tx) error {
+// 		ch := &core.Channel{}
+// 		otx := &wire.OpeningTx{}
+// 		err = proto.Unmarshal(ev.Payload, otx)
+// 		if err != nil {
+// 			return err
+// 		}
+
+// 		ch, err = access.GetChannel(tx, otx.ChannelId)
+// 		if err != nil {
+// 			return err
+// 		}
+
+// 		ch.Open(ev, otx)
+// 		if err != nil {
+// 			return err
+// 		}
+
+// 		err = access.SetChannel(tx, ch)
+// 		if err != nil {
+// 			return err
+// 		}
+
+// 		return nil
+// 	})
+// }
 
 // NewUpdateTx is called on Channels which are in phase OPEN. It makes a new UpdateTx,
 // signs it, saves it as MyProposedUpdateTx, and sends it to the Counterparty.
@@ -349,9 +367,9 @@ func (a *CallerAPI) NewUpdateTx(state []byte, channelID string, fast bool) error
 	})
 }
 
-// ConfirmUpdateTx cosigns the Channel's TheirProposedUpdateTx, saves it to
+// CosignUpdateTx cosigns the Channel's TheirProposedUpdateTx, saves it to
 // LastFullUpdateTx, and sends it to the Counterparty.
-func (a *CallerAPI) ConfirmUpdateTx(channelID string) error {
+func (a *CallerAPI) CosignUpdateTx(channelID string) error {
 	return a.DB.Update(func(tx *bolt.Tx) error {
 		ch, err := access.GetChannel(tx, channelID)
 		if err != nil {
@@ -360,14 +378,14 @@ func (a *CallerAPI) ConfirmUpdateTx(channelID string) error {
 
 		ev := ch.CosignProposedUpdateTx()
 
-		err = a.CounterpartyClient.AddUpdateTx(ev, ch.Counterparty.Address)
+		err = access.SetChannel(tx, ch)
 		if err != nil {
 			return err
 		}
 
-		err = access.SetChannel(tx, ch)
+		err = a.CounterpartyClient.AddFullUpdateTx(ev, ch.Counterparty.Address)
 		if err != nil {
-			return errors.New("database error")
+			return err
 		}
 
 		return nil
@@ -410,7 +428,7 @@ func (a *CallerAPI) CheckFinalUpdateTx(channelID string) error {
 
 		err = access.SetChannel(tx, ch)
 		if err != nil {
-			return errors.New("database error")
+			return err
 		}
 
 		return nil

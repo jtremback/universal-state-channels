@@ -56,7 +56,7 @@ func (a *CallerHTTP) getChannel(w http.ResponseWriter, r *http.Request) {
 		a.fail(w, "body parsing error", 500)
 	}
 
-	err = a.Logic.GetChannel(req.ChannelId)
+	err = a.Logic.CheckChannel(req.ChannelId)
 	if err != nil {
 		a.fail(w, err.Error(), 500)
 	}

@@ -65,7 +65,7 @@ func (a *CallerAPI) AddAccount(
 	})
 }
 
-func (a *CallerAPI) ConfirmChannel(chID string) error {
+func (a *CallerAPI) AcceptChannel(chID string) error {
 	var err error
 	return a.DB.Update(func(tx *bolt.Tx) error {
 		ch := &core.Channel{}
@@ -75,10 +75,11 @@ func (a *CallerAPI) ConfirmChannel(chID string) error {
 		}
 
 		ch.Judge.AppendSignature(ch.OpeningTxEnvelope)
+		ch.Phase = core.OPEN
 
 		access.SetChannel(tx, ch)
 		if err != nil {
-			return errors.New("database error")
+			return err
 		}
 
 		return nil

@@ -200,6 +200,8 @@ func (ch *Channel) Open(ev *wire.Envelope, otx *wire.OpeningTx) error {
 	}
 
 	ch.Phase = OPEN
+	ch.OpeningTx = otx
+	ch.OpeningTxEnvelope = ev
 
 	return nil
 }
@@ -279,6 +281,32 @@ func (ch *Channel) AddUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
 
 	ch.TheirProposedUpdateTx = utx
 	ch.TheirProposedUpdateTxEnvelope = ev
+
+	return nil
+}
+
+func (ch *Channel) AddFullUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
+	if !(ch.Phase == OPEN || ch.Phase == PENDING_CLOSED) {
+		return errors.New("channel not OPEN or PENDING_CLOSED")
+	}
+	if len(ev.Signatures) != 2 {
+		return errors.New("wrong number of signatures")
+	}
+	if !ed25519.Verify(sliceTo32Byte(ch.Account.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[ch.Me])) {
+		return errors.New("my account signature not valid")
+	}
+	if !ed25519.Verify(sliceTo32Byte(ch.Counterparty.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[swap[ch.Me]])) {
+		return errors.New("counterparty signature not valid")
+	}
+	if utx.ChannelId != ch.OpeningTx.ChannelId {
+		return errors.New("channel id incorrect")
+	}
+	if utx.SequenceNumber >= ch.LastFullUpdateTx.SequenceNumber {
+		return errors.New("sequence number too low")
+	}
+
+	ch.LastFullUpdateTx = utx
+	ch.LastFullUpdateTxEnvelope = ev
 
 	return nil
 }

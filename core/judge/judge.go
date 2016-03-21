@@ -139,6 +139,11 @@ func (ch *Channel) Confirm() {
 	ch.Phase = OPEN
 }
 
+func (ch *Channel) Sanitize() {
+	ch.Accounts = nil
+	ch.Judge = nil
+}
+
 func (ch *Channel) AddCancellationTx(ev *wire.Envelope) error {
 	if ch.Phase != OPEN {
 		return errors.New("channel not OPEN")
