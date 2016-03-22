@@ -339,19 +339,19 @@ func (a *CallerAPI) CloseChannel(channelID string) error {
 			return err
 		}
 
-		if ch.LastFullUpdateTx == nil {
-			ev, err := core.SerializeClosingTx(ch.NewClosingTx())
-			ch.Account.AppendSignature(ev)
-			err = a.JudgeClient.AddClosingTx(ev, ch.Judge.Address)
-			if err != nil {
-				return err
-			}
-		} else {
+		if ch.LastFullUpdateTx != nil {
 			err = a.JudgeClient.AddFullUpdateTx(ch.LastFullUpdateTxEnvelope, ch.Judge.Address)
 			if err != nil {
 				return err
 			}
+		}
 
+		ev, err := core.SerializeClosingTx(ch.NewClosingTx())
+		ch.Account.AppendSignature(ev)
+
+		err = a.JudgeClient.AddClosingTx(ev, ch.Judge.Address)
+		if err != nil {
+			return err
 		}
 
 		return nil
