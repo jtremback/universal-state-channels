@@ -114,8 +114,10 @@ func (a *CallerAPI) CloseChannel(chID string, i int) error {
 			return err
 		}
 
-		ch.Close(i)
-
+		err = ch.Close(i)
+		if err != nil {
+			return err
+		}
 		// ev := ch.FullUpdateTxEnvelopes[i]
 		// utx := ch.FullUpdateTxs[i]
 

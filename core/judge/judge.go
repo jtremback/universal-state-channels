@@ -171,7 +171,7 @@ func (ch *Channel) AddClosingTx(ev *wire.Envelope) error {
 	if len(ev.Signatures) != 1 {
 		return errors.New("wrong number of signatures")
 	}
-	if !ed25519.Verify(sliceTo32Byte(ch.Accounts[0].Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[0])) ||
+	if !ed25519.Verify(sliceTo32Byte(ch.Accounts[0].Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[0])) &&
 		!ed25519.Verify(sliceTo32Byte(ch.Accounts[1].Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
 		return errors.New("signature not valid")
 	}
@@ -200,9 +200,12 @@ func (ch *Channel) AddFollowOnTx(ev *wire.Envelope) error {
 
 func (ch *Channel) Close(i int) error {
 	hold := time.Duration(int64(ch.OpeningTx.HoldPeriod))
-	diff := time.Now().Sub(ch.CloseTime.Add(hold))
-	if diff < 0 {
+	since := time.Since(ch.CloseTime)
+	if hold > since {
 		return errors.New("hold period not over")
 	}
+
+	ch.Phase = CLOSED
+
 	return nil
 }
