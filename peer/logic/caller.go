@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 
 	"github.com/boltdb/bolt"
-	"github.com/golang/protobuf/proto"
 	core "github.com/jtremback/usc/core/peer"
 	"github.com/jtremback/usc/core/wire"
 	"github.com/jtremback/usc/peer/access"
@@ -17,10 +16,10 @@ type CallerAPI struct {
 }
 
 type JudgeClient interface {
-	GetFinalUpdateTx(string) (*wire.Envelope, error)
+	GetLastFullUpdateTx(string) (*wire.Envelope, error)
 	AddChannel(*wire.Envelope, string) error
-	AddCancellationTx(*wire.Envelope, string) error
-	AddFinalUpdateTx(*wire.Envelope, string) error
+	AddClosingTx(*wire.Envelope, string) error
+	AddFullUpdateTx(*wire.Envelope, string) error
 	AddFollowOnTx(*wire.Envelope, string) error
 	GetChannel(string, string) ([]byte, error)
 }
@@ -164,7 +163,7 @@ func (a *CallerAPI) ProposeChannel(
 	state []byte,
 	myPubkey []byte,
 	theirPubkey []byte,
-	holdPeriod uint32,
+	holdPeriod uint64,
 ) (*core.Channel, error) {
 	ch := &core.Channel{}
 	err := a.DB.Update(func(tx *bolt.Tx) error {
@@ -341,14 +340,14 @@ func (a *CallerAPI) CloseChannel(channelID string) error {
 		}
 
 		if ch.LastFullUpdateTx == nil {
-			ev, err := core.SerializeCancellationTx(ch.NewCancellationTx())
+			ev, err := core.SerializeClosingTx(ch.NewClosingTx())
 			ch.Account.AppendSignature(ev)
-			err = a.JudgeClient.AddCancellationTx(ev, ch.Judge.Address)
+			err = a.JudgeClient.AddClosingTx(ev, ch.Judge.Address)
 			if err != nil {
 				return err
 			}
 		} else {
-			err = a.JudgeClient.AddFinalUpdateTx(ch.LastFullUpdateTxEnvelope, ch.Judge.Address)
+			err = a.JudgeClient.AddFullUpdateTx(ch.LastFullUpdateTxEnvelope, ch.Judge.Address)
 			if err != nil {
 				return err
 			}
@@ -359,44 +358,44 @@ func (a *CallerAPI) CloseChannel(channelID string) error {
 	})
 }
 
-// CheckFinalUpdateTx checks with the Judge to see if the Counterparty has posted
-// an UpdateTx. If the UpdateTx from the Judge has a lower SequenceNumber than
-// LastFullUpdateTx, we send LastFullUpdateTx to the Judge.
-func (a *CallerAPI) CheckFinalUpdateTx(channelID string) error {
-	return a.DB.Update(func(tx *bolt.Tx) error {
-		ch, err := access.GetChannel(tx, channelID)
-		if err != nil {
-			return err
-		}
+// // CheckFullUpdateTx checks with the Judge to see if the Counterparty has posted
+// // an UpdateTx. If the UpdateTx from the Judge has a lower SequenceNumber than
+// // LastFullUpdateTx, we send LastFullUpdateTx to the Judge.
+// func (a *CallerAPI) CheckFullUpdateTx(channelID string) error {
+// 	return a.DB.Update(func(tx *bolt.Tx) error {
+// 		ch, err := access.GetChannel(tx, channelID)
+// 		if err != nil {
+// 			return err
+// 		}
 
-		ev, err := a.JudgeClient.GetFinalUpdateTx(ch.Judge.Address)
-		if err != nil {
-			return err
-		}
+// 		ev, err := a.JudgeClient.GetLastFullUpdateTx(ch.Judge.Address)
+// 		if err != nil {
+// 			return err
+// 		}
 
-		utx := &wire.UpdateTx{}
-		err = proto.Unmarshal(ev.Payload, utx)
-		if err != nil {
-			return err
-		}
+// 		utx := &wire.UpdateTx{}
+// 		err = proto.Unmarshal(ev.Payload, utx)
+// 		if err != nil {
+// 			return err
+// 		}
 
-		newerUpdateTx, err := ch.AddFinalUpdateTx(ev, utx)
-		if err != nil {
-			return err
-		}
+// 		err = ch.AddFullUpdateTx(ev, utx)
+// 		if err != nil {
+// 			return err
+// 		}
 
-		if newerUpdateTx != nil {
-			err = a.JudgeClient.AddFinalUpdateTx(newerUpdateTx, ch.Judge.Address)
-			if err != nil {
-				return err
-			}
-		}
+// 		if newerUpdateTx != nil {
+// 			err = a.JudgeClient.AddFullUpdateTx(newerUpdateTx, ch.Judge.Address)
+// 			if err != nil {
+// 				return err
+// 			}
+// 		}
 
-		err = access.SetChannel(tx, ch)
-		if err != nil {
-			return err
-		}
+// 		err = access.SetChannel(tx, ch)
+// 		if err != nil {
+// 			return err
+// 		}
 
-		return nil
-	})
-}
+// 		return nil
+// 	})
+// }

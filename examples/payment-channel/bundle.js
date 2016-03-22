@@ -76,7 +76,7 @@ var commands = {
   },
 
 
-  // Sign a cancellation tx and send it to the judge to cancel the channel
+  // Sign a closing tx and send it to the judge to cancel the channel
   cancelChannel: function cancelChannel(_ref4) {
     var channelId = _ref4.channelId;
 

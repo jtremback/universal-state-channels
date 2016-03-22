@@ -114,13 +114,15 @@ func (a *CallerAPI) CloseChannel(chID string, i int) error {
 			return err
 		}
 
-		ev := ch.UpdateTxEnvelopes[i]
-		utx := ch.UpdateTxs[i]
+		ch.Close(i)
 
-		ch.Judge.AppendSignature(ev)
+		// ev := ch.FullUpdateTxEnvelopes[i]
+		// utx := ch.FullUpdateTxs[i]
 
-		ch.LastFullUpdateTx = utx
-		ch.LastFullUpdateTxEnvelope = ev
+		// ch.Judge.AppendSignature(ev)
+
+		// ch.LastFullUpdateTx = utx
+		// ch.LastFullUpdateTxEnvelope = ev
 
 		access.SetChannel(tx, ch)
 		if err != nil {

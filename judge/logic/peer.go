@@ -85,7 +85,7 @@ func (a *PeerAPI) GetChannel(chId string) (*core.Channel, error) {
 	return ch, nil
 }
 
-func (a *PeerAPI) AddFinalUpdateTx(ev *wire.Envelope) error {
+func (a *PeerAPI) AddFullUpdateTx(ev *wire.Envelope) error {
 	var err error
 	err = a.DB.Update(func(tx *bolt.Tx) error {
 		utx := &wire.UpdateTx{}
@@ -99,7 +99,7 @@ func (a *PeerAPI) AddFinalUpdateTx(ev *wire.Envelope) error {
 			return err
 		}
 
-		err = ch.AddFinalUpdateTx(ev, utx)
+		err = ch.AddFullUpdateTx(ev, utx)
 		if err != nil {
 			return err
 		}
@@ -118,10 +118,10 @@ func (a *PeerAPI) AddFinalUpdateTx(ev *wire.Envelope) error {
 	return nil
 }
 
-func (a *PeerAPI) AddCancellationTx(ev *wire.Envelope) error {
+func (a *PeerAPI) AddClosingTx(ev *wire.Envelope) error {
 	var err error
 	return a.DB.Update(func(tx *bolt.Tx) error {
-		ctx := &wire.CancellationTx{}
+		ctx := &wire.ClosingTx{}
 		err = proto.Unmarshal(ev.Payload, ctx)
 		if err != nil {
 			return err
@@ -132,7 +132,7 @@ func (a *PeerAPI) AddCancellationTx(ev *wire.Envelope) error {
 			return err
 		}
 
-		ch.AddCancellationTx(ev)
+		ch.AddClosingTx(ev)
 		if err != nil {
 			return err
 		}

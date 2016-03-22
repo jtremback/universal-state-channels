@@ -112,7 +112,7 @@ func NewAccount(name string, jd *Judge) (*Account, error) {
 	}, nil
 }
 
-func (acct *Account) NewOpeningTx(channelId string, cpt *Counterparty, state []byte, holdPeriod uint32) (*wire.OpeningTx, error) {
+func (acct *Account) NewOpeningTx(channelId string, cpt *Counterparty, state []byte, holdPeriod uint64) (*wire.OpeningTx, error) {
 	pubkeys := [][]byte{acct.Pubkey, cpt.Pubkey}
 
 	return &wire.OpeningTx{
@@ -313,43 +313,43 @@ func (ch *Channel) AddFullUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error 
 	return nil
 }
 
-func (ch *Channel) AddFinalUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) (*wire.Envelope, error) {
-	if !(ch.Phase == OPEN || ch.Phase == PENDING_CLOSED) {
-		return nil, errors.New("channel not OPEN or PENDING_CLOSED")
-	}
-	if len(ev.Signatures) != 3 {
-		return nil, errors.New("wrong number of signatures")
-	}
-	if !ed25519.Verify(sliceTo32Byte(ch.Account.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[ch.Me])) {
-		return nil, errors.New("my account signature not valid")
-	}
-	if !ed25519.Verify(sliceTo32Byte(ch.Counterparty.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[swap[ch.Me]])) {
-		return nil, errors.New("counterparty signature not valid")
-	}
-	if !ed25519.Verify(sliceTo32Byte(ch.Judge.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[2])) {
-		return nil, errors.New("judge signature not valid")
-	}
+// func (ch *Channel) AddFullUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) (*wire.Envelope, error) {
+// 	if !(ch.Phase == OPEN || ch.Phase == PENDING_CLOSED) {
+// 		return nil, errors.New("channel not OPEN or PENDING_CLOSED")
+// 	}
+// 	if len(ev.Signatures) != 3 {
+// 		return nil, errors.New("wrong number of signatures")
+// 	}
+// 	if !ed25519.Verify(sliceTo32Byte(ch.Account.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[ch.Me])) {
+// 		return nil, errors.New("my account signature not valid")
+// 	}
+// 	if !ed25519.Verify(sliceTo32Byte(ch.Counterparty.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[swap[ch.Me]])) {
+// 		return nil, errors.New("counterparty signature not valid")
+// 	}
+// 	if !ed25519.Verify(sliceTo32Byte(ch.Judge.Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[2])) {
+// 		return nil, errors.New("judge signature not valid")
+// 	}
 
-	ch.Phase = PENDING_CLOSED
-	ch.LastFullUpdateTx = utx
-	ch.LastFullUpdateTxEnvelope = ev
+// 	ch.Phase = PENDING_CLOSED
+// 	ch.LastFullUpdateTx = utx
+// 	ch.LastFullUpdateTxEnvelope = ev
 
-	if ch.LastFullUpdateTx != nil {
-		if ch.LastFullUpdateTx.SequenceNumber > utx.SequenceNumber {
-			return ch.LastFullUpdateTxEnvelope, nil
-		}
-	}
+// 	if ch.LastFullUpdateTx != nil {
+// 		if ch.LastFullUpdateTx.SequenceNumber > utx.SequenceNumber {
+// 			return ch.LastFullUpdateTxEnvelope, nil
+// 		}
+// 	}
 
-	return nil, nil
-}
+// 	return nil, nil
+// }
 
-func (ch *Channel) NewCancellationTx() *wire.CancellationTx {
-	return &wire.CancellationTx{
+func (ch *Channel) NewClosingTx() *wire.ClosingTx {
+	return &wire.ClosingTx{
 		ChannelId: ch.ChannelId,
 	}
 }
 
-func SerializeCancellationTx(ctx *wire.CancellationTx) (*wire.Envelope, error) {
+func SerializeClosingTx(ctx *wire.ClosingTx) (*wire.Envelope, error) {
 	data, err := proto.Marshal(ctx)
 	if err != nil {
 		return nil, err

@@ -59,7 +59,7 @@ let commands = {
 
 
 
-  // Sign a cancellation tx and send it to the judge to cancel the channel
+  // Sign a closing tx and send it to the judge to cancel the channel
   cancelChannel({ channelId }) {
     post('http://localhost:4545/cancel_channel', { channelId }, function (err) {
       if (err) { console.log(err) }

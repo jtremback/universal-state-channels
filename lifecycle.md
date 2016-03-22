@@ -82,7 +82,7 @@
   - send the LastFullUpdateTx to the judge.
 
 
-*judge/peer/add_cancellation_tx* - When a judge receives a cancellation tx:
+*judge/peer/add_closing_tx* - When a judge receives a closing tx:
 
 - if the channel is OPEN:
   - check that it is signed by one of the channel's accounts

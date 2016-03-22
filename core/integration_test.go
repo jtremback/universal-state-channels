@@ -160,12 +160,12 @@ func Test(t *testing.T) {
 
 	// --- Back to participants ---
 
-	_, err = ch1.AddFinalUpdateTx(utxEv, utx)
+	_, err = ch1.AddFullUpdateTx(utxEv, utx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = ch2.AddFinalUpdateTx(utxEv, utx)
+	_, err = ch2.AddFullUpdateTx(utxEv, utx)
 	if err != nil {
 		t.Fatal(err)
 	}

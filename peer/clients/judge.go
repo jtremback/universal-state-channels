@@ -64,7 +64,7 @@ func (a *JudgeHTTP) getData(address string, key []byte) ([]byte, error) {
 	return ioutil.ReadAll(resp.Body)
 }
 
-func (a *JudgeHTTP) GetFinalUpdateTx(address string) (*wire.Envelope, error) {
+func (a *JudgeHTTP) GetLastFullUpdateTx(address string) (*wire.Envelope, error) {
 	ev, err := a.getEnvelope(address + "/get_final_update_tx")
 	if err != nil {
 		return nil, errors.New("can't reach judge")
@@ -76,11 +76,11 @@ func (a *JudgeHTTP) AddChannel(ev *wire.Envelope, address string) error {
 	return a.sendEnvelope(ev, address+"/add_channel")
 }
 
-func (a *JudgeHTTP) AddCancellationTx(ev *wire.Envelope, address string) error {
-	return a.sendEnvelope(ev, address+"/add_cancellation_tx")
+func (a *JudgeHTTP) AddClosingTx(ev *wire.Envelope, address string) error {
+	return a.sendEnvelope(ev, address+"/add_closing_tx")
 }
 
-func (a *JudgeHTTP) AddFinalUpdateTx(ev *wire.Envelope, address string) error {
+func (a *JudgeHTTP) AddFullUpdateTx(ev *wire.Envelope, address string) error {
 	return a.sendEnvelope(ev, address+"/add_update_tx")
 }
 

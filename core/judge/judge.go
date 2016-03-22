@@ -59,14 +59,11 @@ type Channel struct {
 	OpeningTx         *wire.OpeningTx
 	OpeningTxEnvelope *wire.Envelope
 
-	UpdateTxs         []*wire.UpdateTx
-	UpdateTxEnvelopes []*wire.Envelope
+	FullUpdateTxs         []*wire.UpdateTx
+	FullUpdateTxEnvelopes []*wire.Envelope
 
-	LastFullUpdateTx         *wire.UpdateTx
-	LastFullUpdateTxEnvelope *wire.Envelope
-
-	CloseTime              time.Time
-	CancellationTxEnvelope *wire.Envelope
+	CloseTime         time.Time
+	ClosingTxEnvelope *wire.Envelope
 
 	Judge    *Judge
 	Accounts []*Account
@@ -144,27 +141,12 @@ func (ch *Channel) Sanitize() {
 	ch.Judge = nil
 }
 
-func (ch *Channel) AddCancellationTx(ev *wire.Envelope) error {
+func (ch *Channel) AddFullUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
 	if ch.Phase != OPEN {
 		return errors.New("channel not OPEN")
 	}
-	if len(ev.Signatures) != 1 {
-		return errors.New("wrong number of signatures")
-	}
-	if !ed25519.Verify(sliceTo32Byte(ch.Accounts[0].Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[0])) &&
-		!ed25519.Verify(sliceTo32Byte(ch.Accounts[1].Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
-		return errors.New("signature not valid")
-	}
-
-	ch.CancellationTxEnvelope = ev
-	ch.CloseTime = time.Now()
-
-	return nil
-}
-
-func (ch *Channel) AddFinalUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error {
-	if ch.Phase != OPEN {
-		return errors.New("channel not OPEN")
+	if ch.FullUpdateTxs[len(ch.FullUpdateTxs)-1].SequenceNumber >= utx.SequenceNumber {
+		return errors.New("sequence number not high enough")
 	}
 	if len(ev.Signatures) != 2 {
 		return errors.New("wrong number of signatures")
@@ -176,8 +158,26 @@ func (ch *Channel) AddFinalUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error
 		return errors.New("signature 1 not valid")
 	}
 
-	ch.UpdateTxs = append(ch.UpdateTxs, utx)
-	ch.UpdateTxEnvelopes = append(ch.UpdateTxEnvelopes, ev)
+	ch.FullUpdateTxs = append(ch.FullUpdateTxs, utx)
+	ch.FullUpdateTxEnvelopes = append(ch.FullUpdateTxEnvelopes, ev)
+
+	return nil
+}
+
+func (ch *Channel) AddClosingTx(ev *wire.Envelope) error {
+	if ch.Phase != OPEN {
+		return errors.New("channel not OPEN")
+	}
+	if len(ev.Signatures) != 1 {
+		return errors.New("wrong number of signatures")
+	}
+	if !ed25519.Verify(sliceTo32Byte(ch.Accounts[0].Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[0])) ||
+		!ed25519.Verify(sliceTo32Byte(ch.Accounts[1].Pubkey), ev.Payload, sliceTo64Byte(ev.Signatures[0])) {
+		return errors.New("signature not valid")
+	}
+
+	ch.ClosingTxEnvelope = ev
+	ch.CloseTime = time.Now()
 
 	return nil
 }
@@ -198,7 +198,11 @@ func (ch *Channel) AddFollowOnTx(ev *wire.Envelope) error {
 	return nil
 }
 
-// func (ch *Channel) Close() error {
-// 	ut := time.Unix(ch.OpeningTx.HoldPeriod, 0)
-// 	return nil
-// }
+func (ch *Channel) Close(i int) error {
+	hold := time.Duration(int64(ch.OpeningTx.HoldPeriod))
+	diff := time.Now().Sub(ch.CloseTime.Add(hold))
+	if diff < 0 {
+		return errors.New("hold period not over")
+	}
+	return nil
+}

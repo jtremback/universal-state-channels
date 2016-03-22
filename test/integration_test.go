@@ -58,21 +58,21 @@ type JudgeClient struct {
 	T     *testing.T
 }
 
-func (client *JudgeClient) GetFinalUpdateTx(address string) (*wire.Envelope, error) {
-	fmt.Println("GetFinalUpdateTx")
+func (client *JudgeClient) GetLastFullUpdateTx(address string) (*wire.Envelope, error) {
+	fmt.Println("GetLastFullUpdateTx")
 	return nil, nil
 }
 
-func (client *JudgeClient) AddFinalUpdateTx(ev *wire.Envelope, address string) error {
-	err := client.Judge.PeerAPI.AddFinalUpdateTx(ev)
+func (client *JudgeClient) AddFullUpdateTx(ev *wire.Envelope, address string) error {
+	err := client.Judge.PeerAPI.AddFullUpdateTx(ev)
 	if err != nil {
 		client.T.Fatal(err)
 	}
 	return nil
 }
 
-func (client *JudgeClient) AddCancellationTx(ev *wire.Envelope, address string) error {
-	err := client.Judge.PeerAPI.AddCancellationTx(ev)
+func (client *JudgeClient) AddClosingTx(ev *wire.Envelope, address string) error {
+	err := client.Judge.PeerAPI.AddClosingTx(ev)
 	if err != nil {
 		client.T.Fatal(err)
 	}
@@ -266,7 +266,7 @@ func TestIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = j.CallerAPI.CloseChannel("shibby")
+	err = j.CallerAPI.CloseChannel("shibby", 1)
 	if err != nil {
 		t.Fatal(err)
 	}
