@@ -65,6 +65,9 @@ type Channel struct {
 	CloseTime         time.Time
 	ClosingTxEnvelope *wire.Envelope
 
+	FinalUpdateTx         *wire.UpdateTx
+	FinalUpdateTxEnvelope *wire.Envelope
+
 	Judge    *Judge
 	Accounts []*Account
 
@@ -145,7 +148,7 @@ func (ch *Channel) AddFullUpdateTx(ev *wire.Envelope, utx *wire.UpdateTx) error 
 	if ch.Phase != OPEN {
 		return errors.New("channel not OPEN")
 	}
-	if ch.FullUpdateTxs[len(ch.FullUpdateTxs)-1].SequenceNumber >= utx.SequenceNumber {
+	if len(ch.FullUpdateTxs) > 0 && ch.FullUpdateTxs[len(ch.FullUpdateTxs)-1].SequenceNumber >= utx.SequenceNumber {
 		return errors.New("sequence number not high enough")
 	}
 	if len(ev.Signatures) != 2 {
@@ -199,6 +202,29 @@ func (ch *Channel) AddFollowOnTx(ev *wire.Envelope) error {
 }
 
 func (ch *Channel) Close(i int) error {
+	if len(ch.FullUpdateTxEnvelopes) == 0 {
+		return errors.New("no full update txs")
+	}
+	if i > (len(ch.FullUpdateTxEnvelopes) - 1) {
+		return errors.New("i out of range")
+	}
+	hold := time.Duration(int64(ch.OpeningTx.HoldPeriod))
+	since := time.Since(ch.CloseTime)
+	if hold > since {
+		return errors.New("hold period not over")
+	}
+
+	ev := ch.FullUpdateTxEnvelopes[i]
+	ch.Judge.AppendSignature(ev)
+
+	ch.FinalUpdateTx = ch.FullUpdateTxs[i]
+	ch.FinalUpdateTxEnvelope = ev
+	ch.Phase = CLOSED
+
+	return nil
+}
+
+func (ch *Channel) Cancel() error {
 	hold := time.Duration(int64(ch.OpeningTx.HoldPeriod))
 	since := time.Since(ch.CloseTime)
 	if hold > since {
@@ -206,6 +232,5 @@ func (ch *Channel) Close(i int) error {
 	}
 
 	ch.Phase = CLOSED
-
 	return nil
 }

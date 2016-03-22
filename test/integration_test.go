@@ -257,16 +257,17 @@ func TestIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = p1.CallerAPI.CloseChannel("shibby")
+	err = p1.CallerAPI.CosignProposedUpdateTx("shibby")
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	err = p1.CallerAPI.CloseChannel("shibby")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = j.CallerAPI.CloseChannel("shibby", 1)
+	err = j.CallerAPI.CloseChannel("shibby", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
