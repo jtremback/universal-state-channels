@@ -12,7 +12,64 @@ USC Peer handles communication between the participants in the channel, and cryp
 
 USC Judge is run by a trusted third party and checks the validity of a state channel's final update transaction. It also has an easy API, which the developer can use to write the business logic which reacts to the state contained in the final update transaction. For example, in a payment channel, the USC Judge could be run by a bank and permanently transfer money when the channel closed.
 
-USC will also have blockchain adapters, which run alongside the USC Peer. Blockchain adapters relay transactions to a judge contract on a blockchain. This allows the trusted third party to be replaced by trust in a programmable blockchain, such as Ethereum, Tendermint, or Hyperledger.
+USC will also have blockchain adapters, which run alongside the USC Peer. Blockchain adapters relay transactions to a judge contract on a blockchain. This allows the trusted third party to be replaced by trust in a programmable blockchain, such as Ethereum, Tendermint, or Hyperledger. 
+
+## Lifecycle
+
+Let's take the imaginary example of a state channel being used by Alice and Bob to decide which color to paint the bike shed. 
+
+Peers: Alice, Bob
+Judge: Acme Shed Painting inc.
+
+First, Alice prepares an `opening transaction`. It tells Acme to paint the shed a color that Alice and Bob will agree on in a future `update transaction`.
+
+```
+OpeningTx
+  channel_id: "foo"
+  pubkeys: [<Alice's pubkey>, <Bob's pubkey>]
+  state: "We want you to paint the bikeshed this color:"
+  hold_period: 4
+```
+She signs it, and sends it to Bob. If Bob thinks it's OK, he signs it as well, and sends it to Acme.
+
+Acme looks at the `OpeningTx`, and if Acme wishes to act as judge, they sign it. Now the channel is open.
+
+Alice and Bob haggle over what color the shed should be. Each time they change their minds, they sign a new `UpdateTx` reflecting the current agreement on shed color. Note that these `UpdateTx`s do not necessarily need to be sent to Acme. 
+
+```
+UpdateTx
+  channel_id: "foo"
+  sequence_number: 1
+  final: false
+  state: "Red"
+```
+
+When Alice or Bob want to close the channel, one of them sends an `UpdateTx` and a `ClosingTx` to Acme. Acme records the  closing time, and continues to accept further `UpdateTx`s for the channel. After the hold period has elapsed, Acme accepts the valid `UpdateTx` with the highest sequence number.
+
+Lets say Bob tries to close the channel with an old `UpdateTx`.
+As long as Alice finds out about this before the hold period is over, she can send the latest `UpdateTx` to correct the record.
+
+If Alice and Bob both agree that they would like to close the channel and get the shed painted, they set `final` to `true`. This means that either of them can submit the transaction and the channel will close without waiting for the hold period to be over.
+
+Let's say that Alice wants to give Bob permission to paint the bike shed blue, but only if he can get Al Gore's sign off on the color choice. She signs this `UpdateTx` and sends it to Bob.
+
+```
+UpdateTx
+  channel_id: "foo"
+  sequence_number: 34
+  final: false
+  state: "Blue, if Al Gore is OK with it."
+```
+
+If Bob gets Al Gore's signature on the color choice, he can close the channel with this `UpdateTx` and then submit a `FollowOnTx` with the signature.
+
+```
+FollowOnTx
+  channel_id: "foo"
+  state: "I think the shed should be Blue" + <Al Gore's signature>
+```
+
+This `FollowOnTx` only needs to be signed by one of the channel participants, so Bob can submit it without Alice's help.
 
 ## HTTP Peer API
 
@@ -186,9 +243,6 @@ Response: A channel, see above.
 >- [`accept_update_tx`](#accept-update-tx)
 >- [`reject_update_tx`](#reject-update-tx)
 >- [`close_channel`](#close-channel)
->- [`check_channel`](#check-channel)
-
->#### HOLD phase
 >- [`check_channel`](#check-channel)
 
 >#### CLOSED phase
