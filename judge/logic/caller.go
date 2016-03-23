@@ -1,8 +1,6 @@
 package logic
 
 import (
-	"errors"
-
 	"github.com/boltdb/bolt"
 	core "github.com/jtremback/usc/core/judge"
 	"github.com/jtremback/usc/judge/access"
@@ -25,7 +23,7 @@ func (a *CallerAPI) NewJudge(
 
 		err = access.SetJudge(tx, jd)
 		if err != nil {
-			return errors.New("database error")
+			return err
 		}
 
 		return nil
@@ -58,7 +56,7 @@ func (a *CallerAPI) AddAccount(
 
 		err = access.SetAccount(tx, acct)
 		if err != nil {
-			return errors.New("database error")
+			return err
 		}
 
 		return nil
@@ -118,17 +116,10 @@ func (a *CallerAPI) CloseChannel(chID string, i int) error {
 		if err != nil {
 			return err
 		}
-		// ev := ch.FullUpdateTxEnvelopes[i]
-		// utx := ch.FullUpdateTxs[i]
-
-		// ch.Judge.AppendSignature(ev)
-
-		// ch.LastFullUpdateTx = utx
-		// ch.LastFullUpdateTxEnvelope = ev
 
 		access.SetChannel(tx, ch)
 		if err != nil {
-			return errors.New("database error")
+			return err
 		}
 
 		return nil
