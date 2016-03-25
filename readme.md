@@ -71,6 +71,27 @@ FollowOnTx
 
 This `FollowOnTx` only needs to be signed by one of the channel participants, so Bob can submit it without Alice's help.
 
+
+## Architecture
+
+There are two main codebases, `Peer` and `Judge`. `Peer` is run by Alice and Bob, and handles the creation, signing, and exchange of `OpeningTx`s and `UpdateTx`s, etc. `Judge` is run by Acme Shed Painting and checks the validity of `OpeningTx`s and `UpdateTx`s and closes the channel after doing the hold period etc. Both of these codebases interact with other applications on the computer over an HTTP API. This way, USC can be used to create a variety of different channels, from a shed painting channel to a payment channel. 
+
+
+## Blockchain adapter
+
+With a blockchain adapter, and a judge contract, USC can be made to work on a programmable blockchain like Ethereum.
+
+The blockchain adapter is a piece of software that lives on the channel participant's computers. It speaks to the `Peer` using the same protocol that a third party `Judge` would, but it relays the transactions onto a blockchain so that the judge contract can act on them.
+
+Alice creates an `OpeningTx`, and sends it to Bob. This step is exactly the same as it is with a centralized judge. Bob gets the `OpeningTx`, checks that he is happy with the state, and signs it as well. Bob then sends the `OpeningTx` to his blockchain adapter, as if it was a third party judge. Bob's blockchain adapter packages the `OpeningTx` into a transaction for the blockchain in question. This transaction is addressed to the on-blockchain judge contract. When the judge contract receives the `OpeningTx`, it checks that the transaction and its signatures are valid, and then calls an executive contract with the state. The executive contract is not part of USC, it evaluates the state and takes some action upon it. For example, a contract that holds some currency in escrow to create a payment channel. If the executive contract finds that the state is valid, it performs whatever actions it is supposed to, and calls back to the judge contract to open the channel.
+
+Once the channel is open, the judge contract accepts `UpdateTx`s from either Alice or Bob. It's important to note that while the judge contract will accept and store an `UpdateTx`s, it does not close the channel when receiving one. The vast majority of `UpdateTx`s are exchanged only between Alice and Bob. When the judge contract gets an `UpdateTx`, it checks the signatures and the sequence number and saves the `UpdateTx`. Only `UpdateTx`s with a sequence number higher than the last are accepted.
+
+`FollowOnTx`s are also accepted. `FollowOnTx`s contain some state and only need to have a valid signature from either Alice or Bob.
+
+At some point, Alice or Bob submits their last `UpdateTx` and a `ClosingTx`. The `ClosingTx` contains no information, but serves to identify the time of closing. The judge contract contiues to accept and store valid `UpdateTx`s. At some point in the future, Alice or Bob send a `FinalizeTx`. When the judge contract receives the `FinalizeTx`, it checks that either the hold period has elapsed, or `final` is `true`, and calls the executive contract. The executive contract evaluates both the state of the `UpdateTx` with the highest sequence number, and any `FollowOnTx`s. The executive contract may take some action on it (i.e. moving tokens for a payment channel). If the executive contract finds that the state is not valid, it attempts to validate the `UpdateTx` state with the second highest sequence number, and so on. If the are no valid `UpdateTx`s, the channel is considered to be cancelled, and the executive contract may take some action to reverse the actions it performed when opening the channel. The judge contract also signs and stores the `UpdateTx`. This allows the blockchain adapter to easily tell the USC `Peer` and its client software that the channel is closed. 
+
+
 ## HTTP Peer API
 
 ### Accounts
