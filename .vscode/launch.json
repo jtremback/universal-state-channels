@@ -6,7 +6,7 @@
 			"type": "go",
 			"request": "launch",
 			"mode": "test",
-			"program": "${workspaceRoot}/test",
+			"program": "${workspaceRoot}/core",
 			"env": {},
 			"args": []
 		}

@@ -24,36 +24,38 @@ contract MetaCoin {
     
     struct Channel {
         bytes32 channelId;
-        bytes32 pubkey0;
-        bytes32 pubkey1;
+        // bytes32 pubkey0;
+        // bytes32 pubkey1;
+        // uint hold_period;
+        // bytes32 fingerprint;
+        // byte[64] signature0;
+        // byte[64] signature1;
+        // uint8 phase;
         bytes state;
-        uint hold_period;
-        bytes32 fingerprint;
-        byte[64] signature0;
-        byte[64] signature1;
-        uint8 phase;
     }
     
+    event Log(bytes);
     function addChannel(
         bytes32 channelId,
-        bytes32 pubkey0,
-        bytes32 pubkey1,
-        bytes state,
-        uint hold_period,
-        bytes32 fingerprint,
-        byte[64] signature0,
-        byte[64] signature1
+        // bytes32 pubkey0,
+        // bytes32 pubkey1,
+        // uint hold_period,
+        // bytes32 fingerprint,
+        // byte[64] signature0,
+        // byte[64] signature1,
+        bytes state
     ) {
+        Log(state);
         Channel memory ch = Channel(
             channelId,
-            pubkey0,
-            pubkey1,
-            state,
-            hold_period,
-            fingerprint,
-            signature0,
-            signature1,
-            0
+            // pubkey0,
+            // pubkey1,
+            // hold_period,
+            // fingerprint,
+            // signature0,
+            // signature1,
+            // 0,
+            state
         );
         
         channels[channelId] = ch;
