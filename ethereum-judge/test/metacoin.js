@@ -9,7 +9,6 @@ contract('MetaCoin', function(accounts) {
         
         // 0x47995556cf3633cd22e4ea51dfaf52b49a9a1d2eb52ddf8fcd309f4bed33c800,
         
-        
         // 172800000,
         
         // 0xa6b3556fd0b6eb4c042d9dd1626ac9f53b19ff63421987140556524861d4b184,
