@@ -10,7 +10,7 @@
     "images/": "images/"
   },
   "deploy": [
-    "MetaCoin"
+    "StateChannels"
   ],
   "rpc": {
     "host": "localhost",

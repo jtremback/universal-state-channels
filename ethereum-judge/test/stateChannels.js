@@ -1,8 +1,9 @@
-contract('MetaCoin', function(accounts) {
-  it("adds channel and checks state", function(done) {
-    var meta = MetaCoin.deployed();
+/*global StateChannels*/
+contract('StateChannels', function(accounts) {
+  it('adds channel and checks state', mochaAsync(async () => {
+    const meta = StateChannels.deployed();
     
-    meta.addChannel(
+    await meta.addChannel(
         0x1000000000000000000000000000000000000000000000000000000000000000,
         
         0x47995556cf3633cd22e4ea51dfaf52b49a9a1d2eb52ddf8fcd309f4bed33c800,
@@ -17,19 +18,19 @@ contract('MetaCoin', function(accounts) {
         
         0x1111
     )
-    .then(function() {
-        return meta.getChannelState.call(0x1000000000000000000000000000000000000000000000000000000000000000)
-    })
-    .then(function(state) {
-        assert.equal(state, 0x1111, "state was not equal");
-    })
-    .then(done).catch(done);
-  });
+    
+    const state = await meta.getChannelState.call(
+        0x1000000000000000000000000000000000000000000000000000000000000000
+    )
+    
+    assert.equal(state, 0x1111, 'state was not equal');
+  }));
   
-  it("rejects channel with existant channelId", function(done) {
-    var meta = MetaCoin.deployed();
-    
-    meta.addChannel(
+  it('rejects channel with existant channelId', mochaAsync(async () => {
+    const meta = StateChannels.deployed();
+    const errLog = meta.Error([{code: 1}]);
+
+    await meta.addChannel(
         0x1000000000000000000000000000000000000000000000000000000000000000,
         
         0x47995556cf3633cd22e4ea51dfaf52b49a9a1d2eb52ddf8fcd309f4bed33c800,
@@ -44,27 +45,20 @@ contract('MetaCoin', function(accounts) {
         
         0x1111
     )
-    .then(function(error) {
-        assert.equal(error, "channel with this channelId already exists", "did not return error");
-    })
-    .then(done).catch(done);
-  });
-
-//   it("add channel", function(done) {
-//     var meta = MetaCoin.deployed();
-
-//     var allEvents = meta.allEvents();
-
-//     allEvents.watch(function(error, result){
-//         console.log(error, result)
-//     });
-
-//     meta.addChannel(0x1111).then(function() {
-//         return meta.getChannelState.call()
-//     }).then(function(state) {
-//         assert.equal(state, 0xffff, "state was not equal");
-//     }).then(done).catch(done);
-//   });
-
+    
+    const logs = await errLog.get()
+    
+    assert.equal('channel with that channelId already exists', logs[0].args.message, 'did not return error');
+  }));
 });
 
+function mochaAsync (fn) {
+    return async (done) => {
+        try {
+            await fn();
+            done();
+        } catch (err) {
+            done(err);
+        }
+    };
+};

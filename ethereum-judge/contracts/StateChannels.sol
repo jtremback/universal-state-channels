@@ -1,9 +1,9 @@
-contract MetaCoin {
+contract StateChannels {
     event Log(string);
     
 	mapping (address => uint) balances;
 
-	function MetaCoin() {
+	function StateChannels() {
 		balances[tx.origin] = 10000;
 	}
 
@@ -36,6 +36,8 @@ contract MetaCoin {
         bytes state;
     }
     
+    event Error(string message);
+    
     function addChannel(
         bytes32 channelId,
         bytes32 pubkey0,
@@ -45,26 +47,23 @@ contract MetaCoin {
         bytes signature0,
         bytes signature1,
         bytes state
-    ) returns(string) {
-        // Best way to check if the channel already exists??
+    ) {
         if (channels[channelId].channelId == channelId) {
-            return "c";
+            Error("channel with that channelId already exists");
+        } else {
+            Channel memory ch = Channel(
+                channelId,
+                pubkey0,
+                pubkey1,
+                hold_period,
+                fingerprint,
+                signature0,
+                signature1,
+                0,
+                state
+            );
+            
+            channels[channelId] = ch;
         }
-        
-        Channel memory ch = Channel(
-            channelId,
-            pubkey0,
-            pubkey1,
-            hold_period,
-            fingerprint,
-            signature0,
-            signature1,
-            0,
-            state
-        );
-        
-        channels[channelId] = ch;
-        
-        return "";
     }
 }
