@@ -10,21 +10,19 @@ const pubkey2 = '47995556cf3633cd22e4ea51dfaf52b49a9a1d2eb52ddf8fcd309f4bed33c80
 contract('StateChannels', function(accounts) {
   it('adds channel and checks state', mochaAsync(async () => {
     const meta = StateChannels.deployed();
-    const channelId = '2000000000000000000000000000000000000000000000000000000000000000'
+    const channelId = '1000000000000000000000000000000000000000000000000000000000000000'
     const state = '1111'
+    const fingerprint = keccak(hexStringToByte(
+        channelId + pubkey1 + pubkey2 + state
+    ))
     
     await meta.addChannel(
         '0x' + channelId,
-        
         '0x' + pubkey1,
-        
         '0x' + pubkey2,
-        
         '0x' + state,
         
-        '0x' + keccak(hexStringToByte(
-            channelId + pubkey1 + pubkey2 + state
-        )),
+        '0x' + fingerprint,
         
         '0x1c5461f65bb15b4570b9ac1f3f974a1af705487f45246651252152fc439a45ef4dea602b2c29c98bd80626e2cefda1d8cfd8454919e5d9649697f8c310b7f502',
         '0xf92052e4f008ac07c555c360e4bf885b21568fe81892a4abb3cc1f74a56c181802ca0d20fab2513c4773d89d73dbd842221c1956895209fcae09db6fa741ec07'
@@ -42,8 +40,11 @@ contract('StateChannels', function(accounts) {
   it('rejects channel with existant channelId', mochaAsync(async () => {
     const meta = StateChannels.deployed();
     const errLog = meta.Error([{code: 1}]);
-    const channelId = '2000000000000000000000000000000000000000000000000000000000000000'
+    const channelId = '1000000000000000000000000000000000000000000000000000000000000000'
     const state = '1111'
+    const fingerprint = keccak(hexStringToByte(
+        channelId + pubkey1 + pubkey2 + state
+    ))
     
     await meta.addChannel(
         '0x' + channelId,
@@ -51,9 +52,7 @@ contract('StateChannels', function(accounts) {
         '0x' + pubkey2,
         '0x' + state,
         
-        '0x' + keccak(hexStringToByte(
-            channelId + pubkey1 + pubkey2 + state
-        )),
+        '0x' + fingerprint,
         
         '0x1c5461f65bb15b4570b9ac1f3f974a1af705487f45246651252152fc439a45ef4dea602b2c29c98bd80626e2cefda1d8cfd8454919e5d9649697f8c310b7f502',
         '0xf92052e4f008ac07c555c360e4bf885b21568fe81892a4abb3cc1f74a56c181802ca0d20fab2513c4773d89d73dbd842221c1956895209fcae09db6fa741ec07'
@@ -71,6 +70,9 @@ contract('StateChannels', function(accounts) {
     const errLog = meta.Error();
     const channelId = '2000000000000000000000000000000000000000000000000000000000000000'
     const state = '1111'
+    const fingerprint = keccak(hexStringToByte(
+        channelId + pubkey1 + pubkey2 + state
+    ))
     
     await meta.addChannel(
         '0x' + channelId,
@@ -78,9 +80,7 @@ contract('StateChannels', function(accounts) {
         '0x' + pubkey2,
         '0x' + state,
         
-        '0x' + keccak(hexStringToByte(
-            channelId + pubkey1 + pubkey2 + state
-        )),
+        '0x' + fingerprint,
         
         '0x1c5461f65bb15b4570b9ac1f3f974a1af705487f45246651252152fc439a45ef4dea602b2c29c98bd80626e2cefda1d8cfd8454919e5d9649697f8c310b7f502',
         '0xf92052e4f008ac07c555c360e4bf885b21568fe81892a4abb3cc1f74a56c181802ca0d20fab2513c4773d89d73dbd842221c1956895209fcae09db6fa741ec07'
