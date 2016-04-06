@@ -1,6 +1,4 @@
-contract StateChannels {
-    event Log(string);
-    
+contract StateChannels {    
 	mapping (address => uint) balances;
 
 	function StateChannels() {
@@ -28,42 +26,53 @@ contract StateChannels {
         bytes32 channelId;
         bytes32 pubkey0;
         bytes32 pubkey1;
-        uint hold_period;
+        bytes state;
         bytes32 fingerprint;
         bytes signature0;
         bytes signature1;
         uint8 phase;
-        bytes state;
     }
     
     event Error(string message);
+    event LogString(string label, string message);
+    event LogBytes(string label, bytes32 message);
+    event LogBytes32(string label, bytes32 message);
     
     function addChannel(
         bytes32 channelId,
         bytes32 pubkey0,
         bytes32 pubkey1,
-        uint hold_period,
+        bytes state,
         bytes32 fingerprint,
         bytes signature0,
-        bytes signature1,
-        bytes state
+        bytes signature1
     ) {
         if (channels[channelId].channelId == channelId) {
             Error("channel with that channelId already exists");
-        } else {
-            Channel memory ch = Channel(
-                channelId,
-                pubkey0,
-                pubkey1,
-                hold_period,
-                fingerprint,
-                signature0,
-                signature1,
-                0,
-                state
-            );
-            
-            channels[channelId] = ch;
+            return;
         }
+        
+        if (fingerprint != sha3(
+            channelId,
+            pubkey0,
+            pubkey1,
+            state
+        )) {
+            Error("fingerprint does not match");
+            return;
+        }
+        
+        Channel memory ch = Channel(
+            channelId,
+            pubkey0,
+            pubkey1,
+            state,
+            fingerprint,
+            signature0,
+            signature1,
+            0
+        );
+        
+        channels[channelId] = ch;
     }
 }
