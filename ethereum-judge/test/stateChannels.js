@@ -2,6 +2,14 @@
 import secp256k1 from 'secp256k1'
 import crypto from 'crypto'
 import sha3 from 'js-sha3'
+
+var privKey
+do {
+  privKey = crypto.randomBytes(32)
+} while (!secp256k1.privateKeyVerify(privKey))
+
+console.log('pk', privKey)
+
 const keccak = sha3.keccak_256
 
 const pubkey1 = '47995556cf3633cd22e4ea51dfaf52b49a9a1d2eb52ddf8fcd309f4bed33c800'
