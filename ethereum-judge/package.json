@@ -10,7 +10,9 @@
     "js-sha3": "^0.5.1",
     "secp256k1": "^3.0.1"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "babel-eslint": "^6.0.2"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

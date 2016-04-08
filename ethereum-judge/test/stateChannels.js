@@ -2,13 +2,31 @@
 import secp256k1 from 'secp256k1'
 import crypto from 'crypto'
 import sha3 from 'js-sha3'
-
+ 
+// generate message to sign 
+var msg = hexStringToByte('0101')
+ 
+// generate privKey 
 var privKey
 do {
   privKey = crypto.randomBytes(32)
 } while (!secp256k1.privateKeyVerify(privKey))
+ 
+// get the public key in a compressed format 
+var pubKey = secp256k1.publicKeyCreate(privKey)
+ 
+// sign the message 
+var sigObj = secp256k1.sign(msg, privKey)
 
-console.log('pk', privKey)
+console.log(web3.eth)
+
+// var sig2Obj = web3.eth.sign(msg, privKey) 
+
+console.log(sigObj)
+ 
+// verify the signature 
+console.log(secp256k1.verify(msg, sigObj.signature, pubKey))
+
 
 const keccak = sha3.keccak_256
 
@@ -97,6 +115,16 @@ contract('StateChannels', function(accounts) {
     
     assert.equal('fingerprint does not match', 'fingerprint does not match', 'did not return error');
   }));
+  
+  it('ecrecover test', mochaAsync(async () => {
+    const meta = StateChannels.deployed();
+    
+        var sig = secp256k1.sign(msgHash, privateKey)
+        var ret = {}
+        ret.r = sig.signature.slice(0, 32)
+        ret.s = sig.signature.slice(32, 64)
+        ret.v = sig.recovery + 27
+  })
 });
 
 function mochaAsync (fn) {
@@ -152,3 +180,20 @@ function concatenate(resultConstructor, ...arrays) {
     }
     return result;
 }
+
+// Extra Addresses
+
+// 0xF18506eD9AdcA974c0e803859994d11fc8753885
+// 579ac7f421b256fd8b9bd7a5f384f6499b98c9409f9d431137b9d69db129d65f
+
+// 0xF8D07F73f5336b8b77D52143906a216E454E8f3a
+// 14475f8d92fbee4e20ce9cb8fe8b434e57e5d80787e9ddd433ee66f848210ea9
+
+// 0x8fb411A5Bb2F0fa6B247409F05494B56E9Fa730a
+// 16add8e48cdfd12a07dd8ec86db7c284a41fbc0d7454272a332520bd2cf64180
+
+// 0xff7FC071Eb3385D1A810bAABD3d870156a965b12
+// 1d9cc52f5a6dbabb5dce7bec96fe729ca45a72323379d48b5641db36d5240c5d
+
+// 0xf8c138b08cb32391C7Ab8Edbda61E023943f72d7
+// 6712eb15afa15159ca2f8ae405bb6286929e81b1d1865186717500202cfcf9b8
