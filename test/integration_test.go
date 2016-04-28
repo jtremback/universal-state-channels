@@ -88,7 +88,7 @@ func (client *JudgeClient) AddChannel(ev *wire.Envelope, address string) error {
 }
 
 func (client *JudgeClient) AddFollowOnTx(ev *wire.Envelope, address string) error {
-	fmt.Println("shibby")
+	fmt.Println("channel1")
 	return nil
 }
 
@@ -219,7 +219,7 @@ func TestIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ch, err := p1.CallerAPI.ProposeChannel("shibby", []byte{20}, acct1.Pubkey, acct2.Pubkey, 23)
+	ch, err := p1.CallerAPI.ProposeChannel("channel1", []byte{20}, acct1.Pubkey, acct2.Pubkey, 23)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -244,30 +244,30 @@ func TestIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	p1.CallerAPI.NewUpdateTx([]byte{4, 30}, "shibby", false)
+	p1.CallerAPI.NewUpdateTx([]byte{4, 30}, "channel1", false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	p2.CallerAPI.NewUpdateTx([]byte{4, 40}, "shibby", false)
+	p2.CallerAPI.NewUpdateTx([]byte{4, 40}, "channel1", false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	p1.CallerAPI.NewUpdateTx([]byte{4, 50}, "shibby", false)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = p1.CallerAPI.CosignProposedUpdateTx("shibby")
+	p1.CallerAPI.NewUpdateTx([]byte{4, 50}, "channel1", false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = p1.CallerAPI.CloseChannel("shibby")
+	err = p1.CallerAPI.CosignProposedUpdateTx("channel1")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = j.CallerAPI.CloseChannel("shibby", 0)
+	err = p1.CallerAPI.CloseChannel("channel1")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = j.CallerAPI.CloseChannel("channel1", 0)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -3,49 +3,51 @@ import secp256k1 from 'secp256k1'
 import crypto from 'crypto'
 import sha3 from 'js-sha3'
  
-// generate message to sign 
-var msg = hexStringToByte('0101')
+// // generate message to sign 
+// var msg = hexStringToByte("47173285a8d7341e5e972fc677286384f802f8ef42a5ec5f03bbfa254cb01fad")
  
-// generate privKey 
-var privKey
-do {
-  privKey = crypto.randomBytes(32)
-} while (!secp256k1.privateKeyVerify(privKey))
+// // // generate privKey 
+// // var privKey
+// // do {
+// //   privKey = crypto.randomBytes(32)
+// // } while (!secp256k1.privateKeyVerify(privKey))
  
-// get the public key in a compressed format 
-var pubKey = secp256k1.publicKeyCreate(privKey)
+// var privKey = hexStringToByte("aca7da997ad177f040240cdccf6905b71ab16b74434388c3a72f34fd25d6439346b2bac274ff29b48b3ea6e2d04c1336eaceafda3c53ab483fc3ff12fac3ebf200")
  
-// sign the message 
-var sigObj = secp256k1.sign(msg, privKey)
+// // get the public key in a compressed format 
+// var pubKey = secp256k1.publicKeyCreate(privKey)
+ 
+// // sign the message 
+// var sigObj = secp256k1.sign(msg, privKey)
 
-console.log(web3.eth)
+// console.log(web3.eth)
 
-// var sig2Obj = web3.eth.sign(msg, privKey) 
+// // var sig2Obj = web3.eth.sign(msg, privKey) 
 
-console.log(sigObj)
+// console.log(sigObj)
  
-// verify the signature 
-console.log(secp256k1.verify(msg, sigObj.signature, pubKey))
+// // verify the signature 
+// console.log(secp256k1.verify(msg, sigObj.signature, pubKey))
 
 
 const keccak = sha3.keccak_256
 
-const pubkey1 = '47995556cf3633cd22e4ea51dfaf52b49a9a1d2eb52ddf8fcd309f4bed33c800'
-const pubkey2 = '47995556cf3633cd22e4ea51dfaf52b49a9a1d2eb52ddf8fcd309f4bed33c800'
+const addr0 = 'F18506eD9AdcA974c0e803859994d11fc8753885'
+const addr1 = 'F8D07F73f5336b8b77D52143906a216E454E8f3a'
 
 contract('StateChannels', function(accounts) {
-  it('adds channel and checks state', mochaAsync(async () => {
+  it.only('adds channel and checks state', mochaAsync(async () => {
     const meta = StateChannels.deployed();
     const channelId = '1000000000000000000000000000000000000000000000000000000000000000'
     const state = '1111'
     const fingerprint = keccak(hexStringToByte(
-        channelId + pubkey1 + pubkey2 + state
+        channelId + addr0 + addr1 + state
     ))
     
     await meta.addChannel(
         '0x' + channelId,
-        '0x' + pubkey1,
-        '0x' + pubkey2,
+        '0x' + addr0,
+        '0x' + addr1,
         '0x' + state,
         
         '0x' + fingerprint,
@@ -69,13 +71,13 @@ contract('StateChannels', function(accounts) {
     const channelId = '1000000000000000000000000000000000000000000000000000000000000000'
     const state = '1111'
     const fingerprint = keccak(hexStringToByte(
-        channelId + pubkey1 + pubkey2 + state
+        channelId + addr0 + addr1 + state
     ))
     
     await meta.addChannel(
         '0x' + channelId,
-        '0x' + pubkey1,
-        '0x' + pubkey2,
+        '0x' + addr0,
+        '0x' + addr1,
         '0x' + state,
         
         '0x' + fingerprint,
@@ -97,13 +99,13 @@ contract('StateChannels', function(accounts) {
     const channelId = '2000000000000000000000000000000000000000000000000000000000000000'
     const state = '1111'
     const fingerprint = keccak(hexStringToByte(
-        channelId + pubkey1 + pubkey2 + state
+        channelId + addr0 + addr1 + state
     ))
     
     await meta.addChannel(
         '0x' + channelId,
-        '0x' + pubkey1,
-        '0x' + pubkey2,
+        '0x' + addr0,
+        '0x' + addr1,
         '0x' + state,
         
         '0x' + fingerprint,
@@ -116,15 +118,13 @@ contract('StateChannels', function(accounts) {
     assert.equal('fingerprint does not match', 'fingerprint does not match', 'did not return error');
   }));
   
-  it('ecrecover test', mochaAsync(async () => {
-    const meta = StateChannels.deployed();
+//   it('ecverify test', mochaAsync(async () => {
+//     const meta = StateChannels.deployed();
+//     var msg = hexStringToByte("47173285a8d7341e5e972fc677286384f802f8ef42a5ec5f03bbfa254cb01fad")
     
-        var sig = secp256k1.sign(msgHash, privateKey)
-        var ret = {}
-        ret.r = sig.signature.slice(0, 32)
-        ret.s = sig.signature.slice(32, 64)
-        ret.v = sig.recovery + 27
-  })
+//     var sig = secp256k1.sign(msg, privateKey)
+
+//   }))
 });
 
 function mochaAsync (fn) {

@@ -1,4 +1,6 @@
-contract StateChannels {    
+import "ECVerify.sol";
+
+contract StateChannels is ECVerify {    
 	mapping (address => uint) balances;
 
 	function StateChannels() {
@@ -24,8 +26,8 @@ contract StateChannels {
     
     struct Channel {
         bytes32 channelId;
-        bytes32 pubkey0;
-        bytes32 pubkey1;
+        address addr0;
+        address addr1;
         bytes state;
         bytes32 fingerprint;
         bytes signature0;
@@ -40,8 +42,8 @@ contract StateChannels {
     
     function addChannel(
         bytes32 channelId,
-        bytes32 pubkey0,
-        bytes32 pubkey1,
+        address addr0,
+        address addr1,
         bytes state,
         bytes32 fingerprint,
         bytes signature0,
@@ -54,18 +56,28 @@ contract StateChannels {
         
         if (fingerprint != sha3(
             channelId,
-            pubkey0,
-            pubkey1,
+            addr0,
+            addr1,
             state
         )) {
             Error("fingerprint does not match");
             return;
         }
         
+        if (!ecverify(fingerprint, signature0, addr0)) {
+            Error("signature0 invalid");
+            return;
+        }
+        
+        if (!ecverify(fingerprint, signature1, addr1)) {
+            Error("signature1 invalid");
+            return;
+        }
+        
         Channel memory ch = Channel(
             channelId,
-            pubkey0,
-            pubkey1,
+            addr0,
+            addr1,
             state,
             fingerprint,
             signature0,

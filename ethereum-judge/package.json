@@ -1,20 +1,20 @@
 {
   "name": "ethereum-judge",
   "version": "1.0.0",
-  "description": "",
   "main": "index.js",
   "directories": {
     "test": "test"
   },
   "dependencies": {
     "js-sha3": "^0.5.1",
-    "secp256k1": "^3.0.1"
+    "secp256k1": "^3.0.1",
+    "truffle": "jtremback/truffle#babel-polyfill"
   },
   "devDependencies": {
     "babel-eslint": "^6.0.2"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "truffle test"
   },
   "author": "jehan.tremback@gmail.com <you@example.com>",
   "license": "ISC",
@@ -47,5 +47,6 @@
       "no-underscore-dangle": 0,
       "comma-dangle": 0
     }
-  }
+  },
+  "description": ""
 }
