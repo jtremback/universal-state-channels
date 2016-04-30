@@ -48,7 +48,7 @@ contract StateChannels is ECVerify {
         bytes32 fingerprint,
         bytes signature0,
         bytes signature1
-    ) {
+    ) { 
         if (channels[channelId].channelId == channelId) {
             Error("channel with that channelId already exists");
             return;

@@ -19,7 +19,9 @@
 // Written by Alex Beregszaszi (@axic), use it under the terms of the MIT license.
 //
 
-contract ECVerify { 
+contract ECVerify {
+    event LogNum(uint8 num);
+    event LogBool(bool b);
     function ecrecovery(bytes32 hash, bytes sig) returns (address) {
         bytes32 r;
         bytes32 s;
@@ -27,7 +29,7 @@ contract ECVerify {
         
         // FIXME: Should this throw, or return 0?
         if (sig.length != 65)
-          return 0;
+          throw;
 
         // The signature format is a compact form of:
         //   {bytes32 r}{bytes32 s}{uint8 v}
@@ -35,22 +37,21 @@ contract ECVerify {
         assembly {
             r := mload(add(sig, 32))
             s := mload(add(sig, 64))
-            // Here we are loading the last 32 bytes, including 31 bytes
-            // of 's'. There is no 'mload8' to do this.
-            //
-            // 'byte' is not working due to the Solidity parser, so lets
-            // use the second best option, 'and'
-            v := and(mload(add(sig, 65)), 1)
+            v := mload(add(sig, 65))
         }
+        LogNum(v);
         
         // old geth sends a `v` value of [0,1], while the new, in line with the YP sends [27,28]
         if (v < 27)
           v += 27;
-        
+          
+        LogNum(v);
         return ecrecover(hash, v, r, s);
     }
     
-    function ecverify(bytes32 hash, bytes sig, address signer) returns (bool) {
-        return ecrecovery(hash, sig) == signer;
+    function ecverify(bytes32 hash, bytes sig, address signer) returns (bool b) {
+        b = ecrecovery(hash, sig) == signer;
+        LogBool(b);
+        return b;
     }
 }

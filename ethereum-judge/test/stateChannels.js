@@ -32,28 +32,68 @@ import sha3 from 'js-sha3'
 
 const keccak = sha3.keccak_256
 
-const addr0 = 'F18506eD9AdcA974c0e803859994d11fc8753885'
-const addr1 = 'F8D07F73f5336b8b77D52143906a216E454E8f3a'
-
 contract('StateChannels', function(accounts) {
-  it.only('adds channel and checks state', mochaAsync(async () => {
+//   it.only('ecverify', mochaAsync(async () => {
+//         const meta = StateChannels.deployed();
+        
+//         const acct = web3.eth.accounts[0]
+//         const hash = '0x' + web3.sha3('helo world')
+        
+//         console.log('acct', acct)
+//         console.log('hash', hash)
+        
+//         const sig = web3.eth.sign(
+//             acct,
+//             hash
+//         )
+        
+//         console.log('sig', sig)
+//         console.log('bytesig', hexStringToByte(sig.slice(2)))
+//         console.log('examplebytesig', hexStringToByte("0xaca7da997ad177f040240cdccf6905b71ab16b74434388c3a72f34fd25d6439346b2bac274ff29b48b3ea6e2d04c1336eaceafda3c53ab483fc3ff12fac3ebf200".slice(2)))
+
+//         const bool = await meta.ecverify(
+//             hash,
+//             sig,
+//             acct
+//         )
+
+//         console.log(bool)
+    
+//         const foo = await meta.ecverify(
+//             "0x47173285a8d7341e5e972fc677286384f802f8ef42a5ec5f03bbfa254cb01fad","0xaca7da997ad177f040240cdccf6905b71ab16b74434388c3a72f34fd25d6439346b2bac274ff29b48b3ea6e2d04c1336eaceafda3c53ab483fc3ff12fac3ebf200",
+//             "0x0e5cb767cce09a7f3ca594df118aa519be5e2b5a"
+//         )
+        
+//         await meta.ecverify(
+//             "0x47173285a8d7341e5e972fc677286384f802f8ef42a5ec5f03bbfa254cb01fad","0xdebaaa0cddb321b2dcaaf846d39605de7b97e77ba6106587855b9106cb10421561a22d94fa8b8a687ff9c911c844d1c016d1a685a9166858f9c7c1bc85128aca01","0x8743523d96a1b2cbe0c6909653a56da18ed484af"
+//         )
+
+//         console.log(foo)
+        
+//         assert.equal(true, false)
+//   }))  
+    
+  it('adds channel and checks state', mochaAsync(async () => {
     const meta = StateChannels.deployed();
     const channelId = '1000000000000000000000000000000000000000000000000000000000000000'
     const state = '1111'
     const fingerprint = keccak(hexStringToByte(
-        channelId + addr0 + addr1 + state
+        channelId + web3.eth.accounts[0].slice(2) + web3.eth.accounts[1].slice(2) + state
     ))
-    
+
+    const sig0 = web3.eth.sign(web3.eth.accounts[0], '0x' + fingerprint)
+    const sig1 = web3.eth.sign(web3.eth.accounts[1], '0x' + fingerprint)
+
     await meta.addChannel(
         '0x' + channelId,
-        '0x' + addr0,
-        '0x' + addr1,
+        web3.eth.accounts[0],
+        web3.eth.accounts[1],
         '0x' + state,
         
         '0x' + fingerprint,
         
-        '0x1c5461f65bb15b4570b9ac1f3f974a1af705487f45246651252152fc439a45ef4dea602b2c29c98bd80626e2cefda1d8cfd8454919e5d9649697f8c310b7f502',
-        '0xf92052e4f008ac07c555c360e4bf885b21568fe81892a4abb3cc1f74a56c181802ca0d20fab2513c4773d89d73dbd842221c1956895209fcae09db6fa741ec07'
+        sig0,
+        sig1
     )
     
     const savedState = await meta.getChannelState.call(
@@ -71,19 +111,22 @@ contract('StateChannels', function(accounts) {
     const channelId = '1000000000000000000000000000000000000000000000000000000000000000'
     const state = '1111'
     const fingerprint = keccak(hexStringToByte(
-        channelId + addr0 + addr1 + state
+        channelId + web3.eth.accounts[0].slice(2) + web3.eth.accounts[1].slice(2) + state
     ))
+    
+    const sig0 = web3.eth.sign(web3.eth.accounts[0], '0x' + fingerprint)
+    const sig1 = web3.eth.sign(web3.eth.accounts[1], '0x' + fingerprint)
     
     await meta.addChannel(
         '0x' + channelId,
-        '0x' + addr0,
-        '0x' + addr1,
+        web3.eth.accounts[0],
+        web3.eth.accounts[1],
         '0x' + state,
         
         '0x' + fingerprint,
         
-        '0x1c5461f65bb15b4570b9ac1f3f974a1af705487f45246651252152fc439a45ef4dea602b2c29c98bd80626e2cefda1d8cfd8454919e5d9649697f8c310b7f502',
-        '0xf92052e4f008ac07c555c360e4bf885b21568fe81892a4abb3cc1f74a56c181802ca0d20fab2513c4773d89d73dbd842221c1956895209fcae09db6fa741ec07'
+        sig0,
+        sig1
     )
     
     const logs = await errLog.get()
@@ -93,29 +136,60 @@ contract('StateChannels', function(accounts) {
   
   
   
-  it('rejects channel with non-valid fingerprint', mochaAsync(async () => {
+  it('rejects channel with non-valid signature0', mochaAsync(async () => {
     const meta = StateChannels.deployed();
     const errLog = meta.Error();
-    const channelId = '2000000000000000000000000000000000000000000000000000000000000000'
+    const channelId = '3000000000000000000000000000000000000000000000000000000000000000'
     const state = '1111'
     const fingerprint = keccak(hexStringToByte(
-        channelId + addr0 + addr1 + state
+        channelId + web3.eth.accounts[0].slice(2) + web3.eth.accounts[1].slice(2) + state
     ))
+
+    const sig0 = web3.eth.sign(web3.eth.accounts[0], '0x' + fingerprint)
+    const sig1 = web3.eth.sign(web3.eth.accounts[1], '0x' + fingerprint)
     
     await meta.addChannel(
         '0x' + channelId,
-        '0x' + addr0,
-        '0x' + addr1,
+        web3.eth.accounts[0],
+        web3.eth.accounts[1],
         '0x' + state,
         
         '0x' + fingerprint,
         
-        '0x1c5461f65bb15b4570b9ac1f3f974a1af705487f45246651252152fc439a45ef4dea602b2c29c98bd80626e2cefda1d8cfd8454919e5d9649697f8c310b7f502',
-        '0xf92052e4f008ac07c555c360e4bf885b21568fe81892a4abb3cc1f74a56c181802ca0d20fab2513c4773d89d73dbd842221c1956895209fcae09db6fa741ec07'
+        sig0,
+        sig1
     )
     const logs = await errLog.get()
     
-    assert.equal('fingerprint does not match', 'fingerprint does not match', 'did not return error');
+    assert.equal('signature0 invalid', 'signature0 invalid', 'did not return error');
+  }));
+    
+  it('rejects channel with non-valid signature1', mochaAsync(async () => {
+    const meta = StateChannels.deployed();
+    const errLog = meta.Error();
+    const channelId = '4000000000000000000000000000000000000000000000000000000000000000'
+    const state = '1111'
+    const fingerprint = keccak(hexStringToByte(
+        channelId + web3.eth.accounts[0].slice(2) + web3.eth.accounts[1].slice(2) + state
+    ))
+
+    const sig0 = web3.eth.sign(web3.eth.accounts[0], '0x' + fingerprint)
+    const sig1 = web3.eth.sign(web3.eth.accounts[2], '0x' + fingerprint)
+    
+    await meta.addChannel(
+        '0x' + channelId,
+        web3.eth.accounts[0],
+        web3.eth.accounts[1],
+        '0x' + state,
+        
+        '0x' + fingerprint,
+        
+        sig0,
+        sig1
+    )
+    const logs = await errLog.get()
+    
+    assert.equal('signature1 invalid', 'signature1 invalid', 'did not return error');
   }));
   
 //   it('ecverify test', mochaAsync(async () => {
@@ -197,3 +271,7 @@ function concatenate(resultConstructor, ...arrays) {
 
 // 0xf8c138b08cb32391C7Ab8Edbda61E023943f72d7
 // 6712eb15afa15159ca2f8ae405bb6286929e81b1d1865186717500202cfcf9b8
+
+// 0x763e646f269d9c50f24d2c4802859ccd185148497774bff4525426d4eb771d0b23e5157cc8dba35bd6eb075cbe7e3854e2775ad44f8c5ae3d3c7ec7c278947081b 
+
+// 41b1a0649752af1b28b3dc29a1556eee781e4a4c3a1f7f53f90fa834de098c4d
