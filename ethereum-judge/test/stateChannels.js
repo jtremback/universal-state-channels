@@ -3,33 +3,6 @@ import secp256k1 from 'secp256k1'
 import crypto from 'crypto'
 import sha3 from 'js-sha3'
  
-// // generate message to sign 
-// var msg = hexStringToByte("47173285a8d7341e5e972fc677286384f802f8ef42a5ec5f03bbfa254cb01fad")
- 
-// // // generate privKey 
-// // var privKey
-// // do {
-// //   privKey = crypto.randomBytes(32)
-// // } while (!secp256k1.privateKeyVerify(privKey))
- 
-// var privKey = hexStringToByte("aca7da997ad177f040240cdccf6905b71ab16b74434388c3a72f34fd25d6439346b2bac274ff29b48b3ea6e2d04c1336eaceafda3c53ab483fc3ff12fac3ebf200")
- 
-// // get the public key in a compressed format 
-// var pubKey = secp256k1.publicKeyCreate(privKey)
- 
-// // sign the message 
-// var sigObj = secp256k1.sign(msg, privKey)
-
-// console.log(web3.eth)
-
-// // var sig2Obj = web3.eth.sign(msg, privKey) 
-
-// console.log(sigObj)
- 
-// // verify the signature 
-// console.log(secp256k1.verify(msg, sigObj.signature, pubKey))
-
-
 const keccak = sha3.keccak_256
 
 contract('StateChannels', function(accounts) {
@@ -89,9 +62,6 @@ contract('StateChannels', function(accounts) {
         web3.eth.accounts[0],
         web3.eth.accounts[1],
         '0x' + state,
-        
-        '0x' + fingerprint,
-        
         sig0,
         sig1
     )
@@ -122,9 +92,6 @@ contract('StateChannels', function(accounts) {
         web3.eth.accounts[0],
         web3.eth.accounts[1],
         '0x' + state,
-        
-        '0x' + fingerprint,
-        
         sig0,
         sig1
     )
@@ -153,9 +120,6 @@ contract('StateChannels', function(accounts) {
         web3.eth.accounts[0],
         web3.eth.accounts[1],
         '0x' + state,
-        
-        '0x' + fingerprint,
-        
         sig0,
         sig1
     )
@@ -181,9 +145,6 @@ contract('StateChannels', function(accounts) {
         web3.eth.accounts[0],
         web3.eth.accounts[1],
         '0x' + state,
-        
-        '0x' + fingerprint,
-        
         sig0,
         sig1
     )
@@ -191,14 +152,6 @@ contract('StateChannels', function(accounts) {
     
     assert.equal('signature1 invalid', 'signature1 invalid', 'did not return error');
   }));
-  
-//   it('ecverify test', mochaAsync(async () => {
-//     const meta = StateChannels.deployed();
-//     var msg = hexStringToByte("47173285a8d7341e5e972fc677286384f802f8ef42a5ec5f03bbfa254cb01fad")
-    
-//     var sig = secp256k1.sign(msg, privateKey)
-
-//   }))
 });
 
 function mochaAsync (fn) {

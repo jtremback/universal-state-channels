@@ -29,7 +29,7 @@ contract StateChannels is ECVerify {
         address addr0;
         address addr1;
         bytes state;
-        bytes32 fingerprint;
+        // bytes32 fingerprint;
         bytes signature0;
         bytes signature1;
         uint8 phase;
@@ -45,7 +45,7 @@ contract StateChannels is ECVerify {
         address addr0,
         address addr1,
         bytes state,
-        bytes32 fingerprint,
+        // bytes32 fingerprint,
         bytes signature0,
         bytes signature1
     ) { 
@@ -54,15 +54,12 @@ contract StateChannels is ECVerify {
             return;
         }
         
-        if (fingerprint != sha3(
+        bytes32 fingerprint = sha3(
             channelId,
             addr0,
             addr1,
             state
-        )) {
-            Error("fingerprint does not match");
-            return;
-        }
+        );
         
         if (!ecverify(fingerprint, signature0, addr0)) {
             Error("signature0 invalid");
@@ -79,7 +76,7 @@ contract StateChannels is ECVerify {
             addr0,
             addr1,
             state,
-            fingerprint,
+            // fingerprint,
             signature0,
             signature1,
             0

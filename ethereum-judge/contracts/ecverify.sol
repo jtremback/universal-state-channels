@@ -21,6 +21,7 @@
 
 contract ECVerify {
     event LogNum(uint8 num);
+    event LogNum256(uint256 num);
     event LogBool(bool b);
     function ecrecovery(bytes32 hash, bytes sig) returns (address) {
         bytes32 r;
@@ -28,8 +29,9 @@ contract ECVerify {
         uint8 v;
         
         // FIXME: Should this throw, or return 0?
-        if (sig.length != 65)
-          throw;
+        if (sig.length != 65) {
+            return 0;
+        }
 
         // The signature format is a compact form of:
         //   {bytes32 r}{bytes32 s}{uint8 v}
