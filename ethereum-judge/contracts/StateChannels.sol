@@ -10,28 +10,23 @@ contract StateChannels is ECVerify {
     uint8 constant PHASE_CLOSED = 2;
      
     function getChannelState(bytes32 channelId) returns(bytes) {
-        return channels[channelId].updates[channels[channelId].updates.length - 1].state;
+        return channels[channelId].state;
     }
     
-    mapping (bytes32 => Channel) public channels;
+    mapping (bytes32 => Channel) channels;
     
     struct Channel {
         bytes32 channelId;
         address addr0;
         address addr1;
         uint8 phase;
-        uint256 challengePeriod;
-        uint256 closingBlock;
-        Update[] updates;
+        uint challengePeriod;
+        uint closingBlock;
+        bytes state;
+        uint sequenceNumber;
         bytes[] evidence;
     }
-    
-    struct Update {
-        uint256 sequenceNumber;
-        bytes state;
-    } 
 
-    
     event Error(string message);
     event LogString(string label, string message);
     event LogBytes(string label, bytes32 message);
@@ -68,12 +63,6 @@ contract StateChannels is ECVerify {
             return;
         }
         
-        Update[] updates;
-        updates.push(Update(
-            0,
-            state
-        ));
-        
         bytes[] memory evidence;
         
         Channel memory channel = Channel(
@@ -83,7 +72,8 @@ contract StateChannels is ECVerify {
             PHASE_OPEN,
             challengePeriod,
             0,
-            updates,
+            state,
+            0,
             evidence
         );
         
@@ -113,49 +103,39 @@ contract StateChannels is ECVerify {
             return;
         }
 
-        if (!(sequenceNumber > channels[channelId].updates[
-                channels[channelId].updates.length - 1
-            ].sequenceNumber)) {
+        if (!(sequenceNumber > channels[channelId].sequenceNumber)) {
             Error("higher sequence number exists");
             return;
         }
         
-        uint i = channels[channelId].updates.length++;
-        channels[channelId].updates[i].sequenceNumber = sequenceNumber;
-        channels[channelId].updates[i].state = state;
-        
-        // Update memory update = Update(
-        //     sequenceNumber,
-        //     state
-        // )
-        
-        // channels[channelId].updates.push(update);
+        channels[channelId].state = state;
+        channels[channelId].sequenceNumber = sequenceNumber;
     }
     
-    function addClosingTx(
-        bytes32 channelId,
-        bytes signature
-    ) {
-        if (channels[channelId].phase != PHASE_OPEN) {
-            Error("channel not open");
-            return;
-        }
+    // function addClosingTx(
+    //     bytes32 channelId,
+    //     bytes signature
+    // ) {
+    //     if (channels[channelId].phase != PHASE_OPEN) {
+    //         Error("channel not open");
+    //         return;
+    //     }
         
-        bytes32 fingerprint = sha3(
-            channelId
-        );
+    //     bytes32 fingerprint = sha3(
+    //         channelId
+    //     );
         
-        if (
-            !(ecverify(fingerprint, signature, channels[channelId].addr0)) &&
-            !(ecverify(fingerprint, signature, channels[channelId].addr1))
-        ) {
-            Error("signature invalid");
-            return;
-        }
+    //     if (
+    //         !(ecverify(fingerprint, signature, channels[channelId].addr0)) &&
+    //         !(ecverify(fingerprint, signature, channels[channelId].addr1))
+    //     ) {
+    //         Error("signature invalid");
+    //         return;
+    //     }
 
-        channels[channelId].closingBlock = block.timestamp;
-        channels[channelId].phase = PHASE_CHALLENGE;
-    }
+    //     channels[channelId].closingBlock = block.timestamp;
+    //     channels[channelId].phase = PHASE_CHALLENGE;
+    // }
     
     // function addEvidenceTx(
     //     bytes32 channelId,
