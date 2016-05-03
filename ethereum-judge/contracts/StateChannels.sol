@@ -31,6 +31,7 @@ contract StateChannels is ECVerify {
     event LogString(string label, string message);
     event LogBytes(string label, bytes32 message);
     event LogBytes32(string label, bytes32 message);
+    event LogNum256(uint256 num);
     
     function addChannel(
         bytes32 channelId,
@@ -93,6 +94,9 @@ contract StateChannels is ECVerify {
             state
         );
         
+        LogNum256(sequenceNumber);
+        LogBytes32('fingerprint', fingerprint);
+        
         if (!ecverify(fingerprint, signature0, channels[channelId].addr0)) {
             Error("signature0 invalid");
             return;
@@ -103,8 +107,8 @@ contract StateChannels is ECVerify {
             return;
         }
 
-        if (!(sequenceNumber > channels[channelId].sequenceNumber)) {
-            Error("higher sequence number exists");
+        if (sequenceNumber <= channels[channelId].sequenceNumber) {
+            Error("sequence number too low");
             return;
         }
         

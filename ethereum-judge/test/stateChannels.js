@@ -8,7 +8,7 @@ const keccak = sha3.keccak_256
 contract('StateChannels', function (accounts) {
     it('adds channel and checks state', mochaAsync(async () => {
         const meta = StateChannels.deployed();
-        const channelId = '1'
+        const channelId = '1000000000000000000000000000000000000000000000000000000000000000'
         const state = '1111'
         const fingerprint = keccak(hexStringToByte(
             channelId + web3.eth.accounts[0].slice(2) + web3.eth.accounts[1].slice(2) + state
@@ -66,7 +66,7 @@ contract('StateChannels', function (accounts) {
     it('rejects channel with non-valid signature0', mochaAsync(async () => {
         const meta = StateChannels.deployed();
         const errLog = meta.Error();
-        const channelId = String(Math.random()).slice(2)
+        const channelId = '2000000000000000000000000000000000000000000000000000000000000000'
         const state = '1111'
         const fingerprint = keccak(hexStringToByte(
             channelId + web3.eth.accounts[0].slice(2) + web3.eth.accounts[1].slice(2) + state
@@ -92,33 +92,7 @@ contract('StateChannels', function (accounts) {
     it('rejects channel with non-valid signature1', mochaAsync(async () => {
         const meta = StateChannels.deployed();
         const errLog = meta.Error();
-        const channelId = String(Math.random()).slice(2)
-        const state = '1111'
-        const fingerprint = keccak(hexStringToByte(
-            channelId + web3.eth.accounts[0].slice(2) + web3.eth.accounts[1].slice(2) + state
-        ))
-
-        const sig0 = web3.eth.sign(web3.eth.accounts[0], '0x' + fingerprint)
-        const sig1 = web3.eth.sign(web3.eth.accounts[2], '0x' + fingerprint) // Wrong account
-
-        await meta.addChannel(
-            '0x' + channelId,
-            web3.eth.accounts[0],
-            web3.eth.accounts[1],
-            '0x' + state,
-            1,
-            sig0,
-            sig1
-        )
-        const logs = await errLog.get()
-
-        assert.equal(logs[0].args.message, 'signature1 invalid', 'did not return error');
-    }));
-
-    it('rejects channel with non-valid signature1', mochaAsync(async () => {
-        const meta = StateChannels.deployed();
-        const errLog = meta.Error();
-        const channelId = String(Math.random()).slice(2)
+        const channelId = '3000000000000000000000000000000000000000000000000000000000000000'
         const state = '1111'
         const fingerprint = keccak(hexStringToByte(
             channelId + web3.eth.accounts[0].slice(2) + web3.eth.accounts[1].slice(2) + state
@@ -143,25 +117,34 @@ contract('StateChannels', function (accounts) {
 
     it('adds update tx', mochaAsync(async () => {
         const meta = StateChannels.deployed()
-        const channelId = '1'
+        const channelId = '1000000000000000000000000000000000000000000000000000000000000000'
         const state = '2222'
-        const sequenceNumber = '1'
+        const sequenceNumber = 1
         const fingerprint = keccak(hexStringToByte(
             channelId +
             sequenceNumber +  
             state
         ))
         
+        console.log('ba', fingerprint)
+        console.log('seqhex', web3.toHex(sequenceNumber))
+        
         const sig0 = web3.eth.sign(web3.eth.accounts[0], '0x' + fingerprint)
         const sig1 = web3.eth.sign(web3.eth.accounts[1], '0x' + fingerprint)
         
         await meta.addUpdateTx(
             '0x' + channelId,
-            '0x' + state,
             '0x' + sequenceNumber,
+            '0x' + state,
             sig0,
             sig1
         )
+        
+        const savedState = await meta.getChannelState.call(
+            '0x' + channelId
+        )
+        
+        assert.equal(savedState, '0x' + state, 'state was not equal');
     }));
 });
 
