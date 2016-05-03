@@ -1,0 +1,104 @@
+import "ECVerify.sol";
+
+contract StateChannel is ECVerify {  
+	function StateChannel() {
+		balances[tx.origin] = 10000;
+	}
+    
+    struct Channel {
+        bytes32 channelId;
+        address addr0;
+        address addr1;
+        bytes state;
+        bytes signature0;
+        bytes signature1;
+        uint8 phase;
+        Update[] updates;
+    }    
+
+    struct Update {
+        bytes32 channelId;
+        uint256 sequenceNumber;
+        bytes state;
+        bytes signature0;
+        bytes signature1;
+    } 
+
+    function getChannelState(bytes32 channelId) returns(bytes) {
+        return channels[channelId].state;
+    }
+    
+    event Error(string message);
+    event LogString(string label, string message);
+    event LogBytes(string label, bytes32 message);
+    event LogBytes32(string label, bytes32 message);
+    
+    function addChannel(
+        bytes32 channelId,
+        address addr0,
+        address addr1,
+        bytes state,
+        bytes signature0,
+        bytes signature1
+    ) { 
+        if (channels[channelId].channelId == channelId) {
+            Error("channel with that channelId already exists");
+            return;
+        }
+        
+        bytes32 fingerprint = sha3(
+            channelId,
+            addr0,
+            addr1,
+            state
+        );
+        
+        if (!ecverify(fingerprint, signature0, addr0)) {
+            Error("signature0 invalid");
+            return;
+        }
+        
+        if (!ecverify(fingerprint, signature1, addr1)) {
+            Error("signature1 invalid");
+            return;
+        }
+        
+        Channel memory ch = Channel(
+            channelId,
+            addr0,
+            addr1,
+            state,
+            signature0,
+            signature1,
+            0
+        );
+        
+        channels[channelId] = ch;
+    }
+    
+    function addUpdateTx(
+        bytes32 channelId,
+        uint256 sequenceNumber,
+        bytes state,
+        bytes signature0,
+        bytes signature1
+    ) {
+        
+        
+        bytes32 fingerprint = sha3(
+            channelId,
+            sequenceNumber,
+            state
+        );
+        
+        if (!ecverify(fingerprint, signature0, addr0)) {
+            Error("signature0 invalid");
+            return;
+        }
+        
+        if (!ecverify(fingerprint, signature1, addr1)) {
+            Error("signature1 invalid");
+            return;
+        }
+    }
+}
