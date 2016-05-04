@@ -6,6 +6,7 @@
     "test": "test"
   },
   "dependencies": {
+    "bignumber.js": "^2.3.0",
     "js-sha3": "^0.5.1",
     "left-pad": "^1.1.0",
     "secp256k1": "^3.0.1",
