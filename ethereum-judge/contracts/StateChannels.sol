@@ -29,7 +29,7 @@ contract StateChannels is ECVerify {
 
     event Error(string message);
     event LogString(string label, string message);
-    event LogBytes(string label, bytes32 message);
+    event LogBytes(string label, bytes message);
     event LogBytes32(string label, bytes32 message);
     event LogNum256(uint256 num);
     
@@ -93,8 +93,10 @@ contract StateChannels is ECVerify {
             sequenceNumber,
             state
         );
-        
+        LogBytes32('channelId', channelId);
         LogNum256(sequenceNumber);
+        LogBytes('state', state);
+        
         LogBytes32('fingerprint', fingerprint);
         
         if (!ecverify(fingerprint, signature0, channels[channelId].addr0)) {

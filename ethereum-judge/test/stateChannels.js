@@ -2,6 +2,7 @@
 import secp256k1 from 'secp256k1'
 import crypto from 'crypto'
 import sha3 from 'js-sha3'
+import leftPad from 'left-pad'
 
 const keccak = sha3.keccak_256
 
@@ -122,12 +123,9 @@ contract('StateChannels', function (accounts) {
         const sequenceNumber = 1
         const fingerprint = keccak(hexStringToByte(
             channelId +
-            sequenceNumber +  
+            leftPad((sequenceNumber).toString(16), 64, 0) +  
             state
         ))
-        
-        console.log('ba', fingerprint)
-        console.log('seqhex', web3.toHex(sequenceNumber))
         
         const sig0 = web3.eth.sign(web3.eth.accounts[0], '0x' + fingerprint)
         const sig1 = web3.eth.sign(web3.eth.accounts[1], '0x' + fingerprint)
