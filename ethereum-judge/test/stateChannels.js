@@ -44,11 +44,7 @@ contract('StateChannels', function (accounts) {
         assert.equal(savedChannel[4].toString(10), '0', 'closingBlock')
         assert.equal(savedChannel[5], '0x' + state, 'state')
         assert.equal(savedChannel[6].toString(10), '0', 'sequenceNumber')
-        assert.equal(savedChannel[7], '0x', 'evidence0')
-        assert.equal(savedChannel[8], '0x', 'evidence1')
     }));
-
-
 
     it('rejects channel with existant channelId', mochaAsync(async () => {
         const meta = StateChannels.deployed();
@@ -199,8 +195,6 @@ contract('StateChannels', function (accounts) {
         assert.isAbove(savedChannel[4].toString(10), '1', 'closingBlock')
         // assert.equal(savedChannel[5], '0x' + state, 'state')
         assert.equal(savedChannel[6].toString(10), '1', 'sequenceNumber')
-        assert.equal(savedChannel[7], '0x', 'evidence0')
-        assert.equal(savedChannel[8], '0x', 'evidence1')
     }));
 });
 
