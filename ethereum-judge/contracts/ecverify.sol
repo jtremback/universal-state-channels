@@ -41,13 +41,11 @@ contract ECVerify {
             s := mload(add(sig, 64))
             v := mload(add(sig, 65))
         }
-        LogNum(v);
         
         // old geth sends a `v` value of [0,1], while the new, in line with the YP sends [27,28]
         if (v < 27)
           v += 27;
-          
-        LogNum(v);
+
         return ecrecover(hash, v, r, s);
     }
     
