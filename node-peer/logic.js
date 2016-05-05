@@ -1,39 +1,18 @@
 /*global StateChannels web3 Uint8Array*/
 
 const request = require('request')
-const minimist = require('minimist')
 import leftPad from 'left-pad'
-import BigNumber from 'bignumber.js'
 import Pudding from 'ether-pudding'
+import JSONStorage from 'node-localstorage'
 
 const ECVerify = Pudding.whisk(abi, binary, { gasLimit: 3141592 })
 const ec = ECVerify.at('address')
 
 const StateChannels = Pudding.whisk(abi, binary, { gasLimit: 3141592 })
 const channels = StateChannels.at('address')
-
-function padNumber(num) {
-  return leftPad((num).toString(16), 64, 0)
-}
+const storage = new JSONStorage('./storage');
 
 let commands = {
-  // View all channels
-  viewChannels({ accountPubkey }) {
-    get('http://localhost:4545/channels/' + accountPubkey, function (err, res, channels) {
-      if (err) { console.log(err) }
-      console.log(channels)
-    })
-  },
-  // View all counterparties
-  viewCounterparties() {
-    get('http://localhost:4545/view_counterparties', function (err, res, counterparties) {
-      if (err) { console.log(err) }
-      console.log(counterparties)
-    })
-  },
-
-
-
   // Propose a new channel and send to counterparty
   async proposeChannel({
     myAddress,
@@ -54,7 +33,7 @@ let commands = {
 
     const signature0 = await web3.promise.eth.sign(myAddress, fingerprint)
 
-    await post(counterpartyUrl + '/propose_channel', {
+    await post(counterpartyUrl + '/proposed_channel', {
       channelId,
       address0: myAddress,
       address1: counterpartyAddress,
@@ -62,6 +41,31 @@ let commands = {
       challengePeriod,
       signature0
     })
+  },
+
+
+
+  // Called by the counterparty over the http api, gets added to the
+  // proposed channel box
+  async proposedChannel(proposal) {
+    const fingerprint = solSha3(
+      'newChannel',
+      proposal.channelId,
+      proposal.address0,
+      proposal.address1,
+      proposal.state,
+      proposal.challengePeriod
+    )
+
+    const valid = await ec.ecverify.call(fingerprint, proposal.signature0, proposal.address0)
+
+    if (!valid) {
+      throw new Error('signature0 invalid')
+    }
+    
+    let proposedChannels = storage.getItem('proposedChannels')
+    proposedChannels.push(proposal)
+    storage.setItem('proposedChannels', proposedChannels)
   },
 
 
@@ -123,7 +127,7 @@ let commands = {
 
     const signature0 = await web3.promise.eth.sign(myAddress, fingerprint)
 
-    await post(counterpartyUrl + '/propose_update', {
+    await post(counterpartyUrl + '/proposed_update', {
       address0: myAddress,
       address1: counterpartyAddress,
       channelId,
@@ -132,13 +136,38 @@ let commands = {
       signature0
     })
   },
+  
+  
+
+  // Called by the counterparty over the http api, gets added to the
+  // proposed update box
+  async proposedUpdate(proposal) {
+    const fingerprint = solSha3(
+      'newChannel',
+      proposal.channelId,
+      proposal.address0,
+      proposal.address1,
+      proposal.state,
+      proposal.challengePeriod
+    )
+
+    const valid = await ec.ecverify.call(fingerprint, proposal.signature0, proposal.address0)
+
+    if (!valid) {
+      throw new Error('signature0 invalid')
+    }
+    
+    let proposedUpdates = storage.getItem('proposedUpdates')
+    proposedUpdates.push(proposal)
+    storage.setItem('proposedUpdates', proposedUpdates)
+  },
 
 
 
-  // Sign the opening tx and send it back to the counterparty
+  // Sign the update and send it back to the counterparty
   async acceptUpdate({
-    myAddress,
-    counterpartyAddress,
+    address0,
+    address1,
     counterpartyUrl,
     channelId,
     sequenceNumber,
@@ -160,9 +189,9 @@ let commands = {
 
     const signature1 = await web3.promise.eth.sign(myAddress, fingerprint)
 
-    await post(counterpartyUrl + '/accept_update', {
-      address0: myAddress,
-      address1: counterpartyAddress,
+    await post(counterpartyUrl + '/accepted_update', {
+      address0,
+      address1,
       channelId,
       sequenceNumber,
       state,
@@ -240,16 +269,6 @@ function post(url, body, callback) {
     json: true,
   }, callback)
 }
-
-let argv = require('minimist')(process.argv.slice(2))
-if (commands[argv._[0]]) {
-  commands[argv._[0]](argv)
-} else if (argv._[0]) {
-  console.log(argv._[0] + ' is not a command')
-} else {
-  console.log('please enter a command')
-}
-
 
 function solSha3(...args) {
   args = args.map(arg => {
