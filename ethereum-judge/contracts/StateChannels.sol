@@ -35,6 +35,8 @@ contract StateChannels is ECVerify {
         evidence1 = channels[channelId].evidence1;
     }
     
+    
+    
     mapping (bytes32 => Channel) channels;
     
     struct Channel {
@@ -120,7 +122,7 @@ contract StateChannels is ECVerify {
         }
         
         bytes32 fingerprint = sha3(
-            'updateTx',
+            'update',
             channelId,
             sequenceNumber,
             state
@@ -161,19 +163,26 @@ contract StateChannels is ECVerify {
         }
         
         bytes32 fingerprint = sha3(
-            'closingTx',
+            'close',
             channelId
         );
         
-        if (
-            !(ecverify(fingerprint, signature, channels[channelId].addr0)) &&
-            !(ecverify(fingerprint, signature, channels[channelId].addr1))
-        ) {
-            Error("signature invalid");
+        if (participant == 0) {
+            if (!ecverify(fingerprint, signature, channels[channelId].addr0)) {
+                Error("signature invalid");
+                return;
+            }
+        } else if (participant == 1) {
+            if (!ecverify(fingerprint, signature, channels[channelId].addr1)) {
+                Error("signature invalid");
+                return;
+            }
+        } else {
+            Error("participant invalid");
             return;
         }
-
-        channels[channelId].closingBlock = block.timestamp + channels[channelId].challengePeriod;
+        
+        channels[channelId].closingBlock = block.number + channels[channelId].challengePeriod;
         channels[channelId].phase = PHASE_CHALLENGE;
     }
     
@@ -199,19 +208,17 @@ contract StateChannels is ECVerify {
                 Error("signature invalid");
                 return;
             }
-            
-            channels[channelId].evidence0 = state;
         } else if (participant == 1) {
             if (!ecverify(fingerprint, signature, channels[channelId].addr1)) {
                 Error("signature invalid");
                 return;
             }
-            
-            channels[channelId].evidence1 = state;
         } else {
             Error("participant invalid");
             return;
         }
+        
+        channels[channelId].evidence1 = state;
     }
     
     // function requestSettlement(

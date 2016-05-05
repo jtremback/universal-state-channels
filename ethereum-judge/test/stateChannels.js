@@ -8,7 +8,7 @@ import BigNumber from 'bignumber.js'
 const keccak = sha3.keccak_256
 
 contract('StateChannels', function (accounts) {
-    it.only('adds channel and checks state', mochaAsync(async () => {
+    it('adds channel and checks state', mochaAsync(async () => {
         const meta = StateChannels.deployed();
         const channelId = '1000000000000000000000000000000000000000000000000000000000000000'
         const state = '1111'
@@ -56,7 +56,11 @@ contract('StateChannels', function (accounts) {
         const channelId = '1000000000000000000000000000000000000000000000000000000000000000'
         const state = '1111'
         const fingerprint = keccak(hexStringToByte(
-            channelId + web3.eth.accounts[0].slice(2) + web3.eth.accounts[1].slice(2) + state
+            web3.toHex('addChannel').slice(2) +
+            channelId +
+            web3.eth.accounts[0].slice(2) +
+            web3.eth.accounts[1].slice(2) +
+            state
         ))
 
         const sig0 = web3.eth.sign(web3.eth.accounts[0], '0x' + fingerprint)
@@ -83,7 +87,11 @@ contract('StateChannels', function (accounts) {
         const channelId = '2000000000000000000000000000000000000000000000000000000000000000'
         const state = '1111'
         const fingerprint = keccak(hexStringToByte(
-            channelId + web3.eth.accounts[0].slice(2) + web3.eth.accounts[1].slice(2) + state
+            web3.toHex('addChannel').slice(2) +
+            channelId +
+            web3.eth.accounts[0].slice(2) +
+            web3.eth.accounts[1].slice(2) +
+            state
         ))
 
         const sig0 = web3.eth.sign(web3.eth.accounts[2], '0x' + fingerprint) // Wrong account
@@ -109,7 +117,11 @@ contract('StateChannels', function (accounts) {
         const channelId = '3000000000000000000000000000000000000000000000000000000000000000'
         const state = '1111'
         const fingerprint = keccak(hexStringToByte(
-            channelId + web3.eth.accounts[0].slice(2) + web3.eth.accounts[1].slice(2) + state
+            web3.toHex('addChannel').slice(2) +
+            channelId +
+            web3.eth.accounts[0].slice(2) +
+            web3.eth.accounts[1].slice(2) +
+            state
         ))
 
         const sig0 = web3.eth.sign(web3.eth.accounts[0], '0x' + fingerprint)
@@ -135,6 +147,7 @@ contract('StateChannels', function (accounts) {
         const state = '2222'
         const sequenceNumber = 1
         const fingerprint = keccak(hexStringToByte(
+            web3.toHex('update').slice(2) +
             channelId +
             leftPad((sequenceNumber).toString(16), 64, 0) +  
             state
@@ -145,41 +158,49 @@ contract('StateChannels', function (accounts) {
         
         await meta.addUpdateTx(
             '0x' + channelId,
-            '0x' + sequenceNumber,
+            web3.toHex(sequenceNumber),
             '0x' + state,
             sig0,
             sig1
         )
         
-        const savedState = await meta.getChannelState.call(
+        const savedChannel = await meta.getChannel.call(
             '0x' + channelId
         )
-        
-        assert.equal(savedState, '0x' + state, 'state was not equal');
+
+        assert.equal(savedChannel[5], '0x' + state, 'state')
+        assert.equal(savedChannel[6].toString(10), '1', 'sequenceNumber')
     }));
     
     it('adds closing tx', mochaAsync(async () => {
         const meta = StateChannels.deployed()
         const channelId = '1000000000000000000000000000000000000000000000000000000000000000'
-        const state = '2222'
-        const sequenceNumber = 1
         const fingerprint = keccak(hexStringToByte(
-            channelId +
-            web3.toHex('closingTx')
+            web3.toHex('close').slice(2) +
+            channelId
         ))
         
         const sig = web3.eth.sign(web3.eth.accounts[0], '0x' + fingerprint)
         
         await meta.addClosingTx(
             '0x' + channelId,
-            sig
+            sig,
+            0
         )
         
-        const savedState = await meta.getChannelState.call(
+        const savedChannel = await meta.getChannel.call(
             '0x' + channelId
         )
         
-        assert.equal(savedState, '0x' + state, 'state was not equal');
+        assert.equal(savedChannel[0], web3.eth.accounts[0], 'addr0')
+        assert.equal(savedChannel[1], web3.eth.accounts[1], 'addr1')
+        assert.equal(savedChannel[2].toString(10), '1', 'phase')
+        assert.equal(savedChannel[3].toString(10), '1', 'challengePeriod')
+        assert.isAbove(savedChannel[4].toString(10), '1', 'closingBlock')
+        // assert.equal(savedChannel[5], '0x' + state, 'state')
+        assert.equal(savedChannel[6].toString(10), '1', 'sequenceNumber')
+        assert.equal(savedChannel[7], '0x', 'evidence0')
+        assert.equal(savedChannel[8], '0x', 'evidence1')
     }));
 });
 

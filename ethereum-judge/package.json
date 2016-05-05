@@ -13,7 +13,8 @@
     "truffle": "jtremback/truffle#babel-polyfill"
   },
   "devDependencies": {
-    "babel-eslint": "^6.0.2"
+    "babel-eslint": "^6.0.2",
+    "eslint": "^2.9.0"
   },
   "scripts": {
     "test": "truffle test"
