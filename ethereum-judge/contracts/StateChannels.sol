@@ -9,8 +9,8 @@ contract StateChannels is ECVerify {
     
     struct Channel {
         bytes32 channelId;
-        address addr0;
-        address addr1;
+        address address0;
+        address address1;
         uint8 phase;
         uint challengePeriod;
         uint closingBlock;
@@ -19,16 +19,16 @@ contract StateChannels is ECVerify {
     }
     
     function getChannel(bytes32 channelId) returns(
-        address addr0,
-        address addr1,
+        address address0,
+        address address1,
         uint8 phase,
         uint challengePeriod,
         uint closingBlock,
         bytes state,
         uint sequenceNumber
     ) {
-        addr0 = channels[channelId].addr0;
-        addr1 = channels[channelId].addr1;
+        address0 = channels[channelId].address0;
+        address1 = channels[channelId].address1;
         phase = channels[channelId].phase;
         challengePeriod = channels[channelId].challengePeriod;
         closingBlock = channels[channelId].closingBlock;
@@ -44,8 +44,8 @@ contract StateChannels is ECVerify {
     
     function newChannel(
         bytes32 channelId,
-        address addr0,
-        address addr1,
+        address address0,
+        address address1,
         bytes state,
         uint256 challengePeriod,
         bytes signature0,
@@ -59,25 +59,26 @@ contract StateChannels is ECVerify {
         bytes32 fingerprint = sha3(
             'newChannel',
             channelId,
-            addr0,
-            addr1,
+            address0,
+            address1,
             state
+            // challengePeriod
         );
         
-        if (!ecverify(fingerprint, signature0, addr0)) {
+        if (!ecverify(fingerprint, signature0, address0)) {
             Error("signature0 invalid");
             return;
         }
         
-        if (!ecverify(fingerprint, signature1, addr1)) {
+        if (!ecverify(fingerprint, signature1, address1)) {
             Error("signature1 invalid");
             return;
         }
         
         Channel memory channel = Channel(
             channelId,
-            addr0,
-            addr1,
+            address0,
+            address1,
             PHASE_OPEN,
             challengePeriod,
             0,
@@ -109,12 +110,12 @@ contract StateChannels is ECVerify {
             state
         );
         
-        if (!ecverify(fingerprint, signature0, channels[channelId].addr0)) {
+        if (!ecverify(fingerprint, signature0, channels[channelId].address0)) {
             Error("signature0 invalid");
             return;
         }
         
-        if (!ecverify(fingerprint, signature1, channels[channelId].addr1)) {
+        if (!ecverify(fingerprint, signature1, channels[channelId].address1)) {
             Error("signature1 invalid");
             return;
         }
@@ -131,7 +132,7 @@ contract StateChannels is ECVerify {
     function startChallengePeriod(
         bytes32 channelId,
         bytes signature,
-        uint8 participant
+        address signer
     ) {
         if (channels[channelId].phase != PHASE_OPEN) {
             Error("channel not open");
@@ -143,21 +144,21 @@ contract StateChannels is ECVerify {
             channelId
         );
         
-        if (participant == 0) {
-            if (!ecverify(fingerprint, signature, channels[channelId].addr0)) {
+        if (signer == channels[channelId].address0) {
+            if (!ecverify(fingerprint, signature, channels[channelId].address0)) {
                 Error("signature invalid");
                 return;
             }
-        } else if (participant == 1) {
-            if (!ecverify(fingerprint, signature, channels[channelId].addr1)) {
+        } else if (signer == channels[channelId].address1) {
+            if (!ecverify(fingerprint, signature, channels[channelId].address1)) {
                 Error("signature invalid");
                 return;
             }
         } else {
-            Error("participant invalid");
+            Error("signer invalid");
             return;
         }
-        
+
         channels[channelId].closingBlock = block.number + channels[channelId].challengePeriod;
         channels[channelId].phase = PHASE_CHALLENGE;
     }

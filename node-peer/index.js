@@ -100,10 +100,10 @@ let commands = {
     const signature1 = await web3.promise.eth.sign(address1, fingerprint)
 
     await channels.newChannel(
-      '0x' + channelId,
-      web3.eth.accounts[0],
-      web3.eth.accounts[1],
-      '0x' + state,
+      channelId,
+      address0,
+      address1,
+      state,
       challengePeriod,
       signature0,
       signature1

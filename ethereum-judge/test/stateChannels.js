@@ -1,40 +1,60 @@
-/*global StateChannels*/
+/*global StateChannels web3 Uint8Array*/
 import secp256k1 from 'secp256k1'
 import crypto from 'crypto'
 import sha3 from 'js-sha3'
 import leftPad from 'left-pad'
-import BigNumber from 'bignumber.js' 
+import BigNumber from 'bignumber.js'
 
 const keccak = sha3.keccak_256
+
+function solSha3 (...args) {
+    args = args.map(arg => {
+        if (typeof arg === 'string') {
+            if (arg.substring(0, 2) === '0x') {
+                return arg.slice(2)
+            } else {
+                return web3.toHex(arg).slice(2)
+            }
+        }
+        
+        if (typeof arg === 'number') {
+            return leftPad((arg).toString(16), 64, 0)
+        }
+    })
+    
+    args = args.join('')
+    
+    return '0x' + web3.sha3(args, { encoding: 'hex' })
+}
 
 contract('StateChannels', function (accounts) {
     it('adds channel and checks state', mochaAsync(async () => {
         const meta = StateChannels.deployed();
-        const channelId = '1000000000000000000000000000000000000000000000000000000000000000'
-        const state = '1111'
-        const fingerprint = keccak(hexStringToByte(
-            web3.toHex('newChannel').slice(2) +
-            channelId +
-            web3.eth.accounts[0].slice(2) +
-            web3.eth.accounts[1].slice(2) +
-            state
-        ))
-
-        const sig0 = web3.eth.sign(web3.eth.accounts[0], '0x' + fingerprint)
-        const sig1 = web3.eth.sign(web3.eth.accounts[1], '0x' + fingerprint)
-
-        await meta.newChannel(
-            '0x' + channelId,
+        const channelId = '0x1000000000000000000000000000000000000000000000000000000000000000'
+        const state = '0x1111'
+        const fingerprint = solSha3(
+            'newChannel',
+            channelId,
             web3.eth.accounts[0],
             web3.eth.accounts[1],
-            '0x' + state,
+            state
+        )
+
+        const sig0 = web3.eth.sign(web3.eth.accounts[0], fingerprint)
+        const sig1 = web3.eth.sign(web3.eth.accounts[1], fingerprint)
+
+        await meta.newChannel(
+            channelId,
+            web3.eth.accounts[0],
+            web3.eth.accounts[1],
+            state,
             1,
             sig0,
             sig1
         )
 
         const savedChannel = await meta.getChannel.call(
-            '0x' + channelId
+            channelId
         )
         
         assert.equal(savedChannel[0], web3.eth.accounts[0], 'addr0')
@@ -42,31 +62,31 @@ contract('StateChannels', function (accounts) {
         assert.equal(savedChannel[2].toString(10), '0', 'phase')
         assert.equal(savedChannel[3].toString(10), '1', 'challengePeriod')
         assert.equal(savedChannel[4].toString(10), '0', 'closingBlock')
-        assert.equal(savedChannel[5], '0x' + state, 'state')
+        assert.equal(savedChannel[5], state, 'state')
         assert.equal(savedChannel[6].toString(10), '0', 'sequenceNumber')
     }));
 
     it('rejects channel with existant channelId', mochaAsync(async () => {
         const meta = StateChannels.deployed();
         const errLog = meta.Error([{ code: 1 }]);
-        const channelId = '1000000000000000000000000000000000000000000000000000000000000000'
-        const state = '1111'
-        const fingerprint = keccak(hexStringToByte(
-            web3.toHex('newChannel').slice(2) +
-            channelId +
-            web3.eth.accounts[0].slice(2) +
-            web3.eth.accounts[1].slice(2) +
-            state
-        ))
-
-        const sig0 = web3.eth.sign(web3.eth.accounts[0], '0x' + fingerprint)
-        const sig1 = web3.eth.sign(web3.eth.accounts[1], '0x' + fingerprint)
-
-        await meta.newChannel(
-            '0x' + channelId,
+        const channelId = '0x1000000000000000000000000000000000000000000000000000000000000000'
+        const state = '0x1111'
+        const fingerprint = solSha3(
+            'newChannel',
+            channelId,
             web3.eth.accounts[0],
             web3.eth.accounts[1],
-            '0x' + state,
+            state
+        )
+
+        const sig0 = web3.eth.sign(web3.eth.accounts[0], fingerprint)
+        const sig1 = web3.eth.sign(web3.eth.accounts[1], fingerprint)
+
+        await meta.newChannel(
+            channelId,
+            web3.eth.accounts[0],
+            web3.eth.accounts[1],
+            state,
             1,
             sig0,
             sig1
@@ -80,24 +100,24 @@ contract('StateChannels', function (accounts) {
     it('rejects channel with non-valid signature0', mochaAsync(async () => {
         const meta = StateChannels.deployed();
         const errLog = meta.Error();
-        const channelId = '2000000000000000000000000000000000000000000000000000000000000000'
-        const state = '1111'
-        const fingerprint = keccak(hexStringToByte(
-            web3.toHex('newChannel').slice(2) +
-            channelId +
-            web3.eth.accounts[0].slice(2) +
-            web3.eth.accounts[1].slice(2) +
-            state
-        ))
-
-        const sig0 = web3.eth.sign(web3.eth.accounts[2], '0x' + fingerprint) // Wrong account
-        const sig1 = web3.eth.sign(web3.eth.accounts[1], '0x' + fingerprint)
-
-        await meta.newChannel(
-            '0x' + channelId,
+        const channelId = '0x2000000000000000000000000000000000000000000000000000000000000000'
+        const state = '0x1111'
+        const fingerprint = solSha3(
+            'newChannel',
+            channelId,
             web3.eth.accounts[0],
             web3.eth.accounts[1],
-            '0x' + state,
+            state
+        )
+
+        const sig0 = web3.eth.sign(web3.eth.accounts[2], fingerprint) // Wrong account
+        const sig1 = web3.eth.sign(web3.eth.accounts[1], fingerprint)
+
+        await meta.newChannel(
+            channelId,
+            web3.eth.accounts[0],
+            web3.eth.accounts[1],
+            state,
             1,
             sig0,
             sig1
@@ -110,24 +130,24 @@ contract('StateChannels', function (accounts) {
     it('rejects channel with non-valid signature1', mochaAsync(async () => {
         const meta = StateChannels.deployed();
         const errLog = meta.Error();
-        const channelId = '3000000000000000000000000000000000000000000000000000000000000000'
-        const state = '1111'
-        const fingerprint = keccak(hexStringToByte(
-            web3.toHex('newChannel').slice(2) +
-            channelId +
-            web3.eth.accounts[0].slice(2) +
-            web3.eth.accounts[1].slice(2) +
-            state
-        ))
-
-        const sig0 = web3.eth.sign(web3.eth.accounts[0], '0x' + fingerprint)
-        const sig1 = web3.eth.sign(web3.eth.accounts[2], '0x' + fingerprint) // Wrong account
-
-        await meta.newChannel(
-            '0x' + channelId,
+        const channelId = '0x3000000000000000000000000000000000000000000000000000000000000000'
+        const state = '0x1111'
+        const fingerprint = solSha3(
+            'newChannel',
+            channelId,
             web3.eth.accounts[0],
             web3.eth.accounts[1],
-            '0x' + state,
+            state
+        )
+
+        const sig0 = web3.eth.sign(web3.eth.accounts[0], fingerprint)
+        const sig1 = web3.eth.sign(web3.eth.accounts[2], fingerprint) // Wrong account
+
+        await meta.newChannel(
+            channelId,
+            web3.eth.accounts[0],
+            web3.eth.accounts[1],
+            state,
             1,
             sig0,
             sig1
@@ -139,53 +159,53 @@ contract('StateChannels', function (accounts) {
 
     it('update state', mochaAsync(async () => {
         const meta = StateChannels.deployed()
-        const channelId = '1000000000000000000000000000000000000000000000000000000000000000'
-        const state = '2222'
-        const sequenceNumber = 1
-        const fingerprint = keccak(hexStringToByte(
-            web3.toHex('updateState').slice(2) +
-            channelId +
-            leftPad((sequenceNumber).toString(16), 64, 0) +  
+        const channelId = '0x1000000000000000000000000000000000000000000000000000000000000000'
+        const state = '0x2222'
+        const sequenceNumber = 1        
+        const fingerprint = solSha3(
+            'updateState',
+            channelId,
+            sequenceNumber,
             state
-        ))
+        )
         
-        const sig0 = web3.eth.sign(web3.eth.accounts[0], '0x' + fingerprint)
-        const sig1 = web3.eth.sign(web3.eth.accounts[1], '0x' + fingerprint)
+        const sig0 = web3.eth.sign(web3.eth.accounts[0], fingerprint)
+        const sig1 = web3.eth.sign(web3.eth.accounts[1], fingerprint)
         
         await meta.updateState(
-            '0x' + channelId,
-            web3.toHex(sequenceNumber),
-            '0x' + state,
+            channelId,
+            sequenceNumber,
+            state,
             sig0,
             sig1
         )
         
         const savedChannel = await meta.getChannel.call(
-            '0x' + channelId
+            channelId
         )
 
-        assert.equal(savedChannel[5], '0x' + state, 'state')
+        assert.equal(savedChannel[5], state, 'state')
         assert.equal(savedChannel[6].toString(10), '1', 'sequenceNumber')
     }));
     
     it('start challenge period', mochaAsync(async () => {
         const meta = StateChannels.deployed()
-        const channelId = '1000000000000000000000000000000000000000000000000000000000000000'
-        const fingerprint = keccak(hexStringToByte(
-            web3.toHex('startChallengePeriod').slice(2) +
+        const channelId = '0x1000000000000000000000000000000000000000000000000000000000000000'
+        const fingerprint = solSha3(
+            'startChallengePeriod',
             channelId
-        ))
+        )
         
-        const sig = web3.eth.sign(web3.eth.accounts[0], '0x' + fingerprint)
+        const sig = web3.eth.sign(web3.eth.accounts[0], fingerprint)
         
         await meta.startChallengePeriod(
-            '0x' + channelId,
+            channelId,
             sig,
-            0
+            web3.eth.accounts[0]
         )
         
         const savedChannel = await meta.getChannel.call(
-            '0x' + channelId
+            channelId
         )
         
         assert.equal(savedChannel[0], web3.eth.accounts[0], 'addr0')
@@ -193,7 +213,7 @@ contract('StateChannels', function (accounts) {
         assert.equal(savedChannel[2].toString(10), '1', 'phase')
         assert.equal(savedChannel[3].toString(10), '1', 'challengePeriod')
         assert.isAbove(savedChannel[4].toString(10), '1', 'closingBlock')
-        // assert.equal(savedChannel[5], '0x' + state, 'state')
+        // assert.equal(savedChannel[5], state, 'state')
         assert.equal(savedChannel[6].toString(10), '1', 'sequenceNumber')
     }));
 });
