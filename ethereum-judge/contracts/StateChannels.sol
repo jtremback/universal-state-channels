@@ -62,7 +62,7 @@ contract StateChannels is ECVerify {
             address0,
             address1,
             state
-            // challengePeriod
+            challengePeriod
         );
         
         if (!ecverify(fingerprint, signature0, address0)) {
