@@ -8,9 +8,20 @@ contract StateChannels is ECVerify {
     uint8 constant PHASE_OPEN = 0;
     uint8 constant PHASE_CHALLENGE = 1;
     uint8 constant PHASE_CLOSED = 2;
-     
-    function getChannelState(bytes32 channelId) returns(bytes) {
-        return channels[channelId].state;
+    
+    mapping (bytes32 => Channel) channels;
+    
+    struct Channel {
+        bytes32 channelId;
+        address addr0;
+        address addr1;
+        uint8 phase;
+        uint challengePeriod;
+        uint closingBlock;
+        bytes state;
+        uint sequenceNumber;
+        bytes evidence0;
+        bytes evidence1;
     }
     
     function getChannel(bytes32 channelId) returns(
@@ -34,23 +45,6 @@ contract StateChannels is ECVerify {
         evidence0 = channels[channelId].evidence0;
         evidence1 = channels[channelId].evidence1;
     }
-    
-    
-    
-    mapping (bytes32 => Channel) channels;
-    
-    struct Channel {
-        bytes32 channelId;
-        address addr0;
-        address addr1;
-        uint8 phase;
-        uint challengePeriod;
-        uint closingBlock;
-        bytes state;
-        uint sequenceNumber;
-        bytes evidence0;
-        bytes evidence1;
-    }
 
     event Error(string message);
     event LogString(string label, string message);
@@ -58,7 +52,7 @@ contract StateChannels is ECVerify {
     event LogBytes32(string label, bytes32 message);
     event LogNum256(uint256 num);
     
-    function addChannel(
+    function newChannel(
         bytes32 channelId,
         address addr0,
         address addr1,
@@ -73,7 +67,7 @@ contract StateChannels is ECVerify {
         }
         
         bytes32 fingerprint = sha3(
-            'addChannel',
+            'newChannel',
             channelId,
             addr0,
             addr1,
@@ -109,29 +103,26 @@ contract StateChannels is ECVerify {
         channels[channelId] = channel;
     }
     
-    function addUpdateTx(
+    function updateState(
         bytes32 channelId,
         uint256 sequenceNumber,
         bytes state,
         bytes signature0,
         bytes signature1
     ) {
+        tryClose(channelId);
+        
         if (channels[channelId].phase == PHASE_CLOSED) {
             Error("channel closed");
             return;
         }
         
         bytes32 fingerprint = sha3(
-            'update',
+            'updateState',
             channelId,
             sequenceNumber,
             state
         );
-        LogBytes32('channelId', channelId);
-        LogNum256(sequenceNumber);
-        LogBytes('state', state);
-        
-        LogBytes32('fingerprint', fingerprint);
         
         if (!ecverify(fingerprint, signature0, channels[channelId].addr0)) {
             Error("signature0 invalid");
@@ -152,7 +143,7 @@ contract StateChannels is ECVerify {
         channels[channelId].sequenceNumber = sequenceNumber;
     }
     
-    function addClosingTx(
+    function startChallengePeriod(
         bytes32 channelId,
         bytes signature,
         uint8 participant
@@ -163,7 +154,7 @@ contract StateChannels is ECVerify {
         }
         
         bytes32 fingerprint = sha3(
-            'close',
+            'startChallengePeriod',
             channelId
         );
         
@@ -186,47 +177,59 @@ contract StateChannels is ECVerify {
         channels[channelId].phase = PHASE_CHALLENGE;
     }
     
-    function addEvidenceTx(
-        bytes32 channelId,
-        bytes state,
-        bytes signature,
-        uint8 participant
-    ) {
-        if (channels[channelId].phase == PHASE_CLOSED) {
-            Error("channel closed");
-            return;
-        }
-        
-        bytes32 fingerprint = sha3(
-            'evidenceTx',
-            channelId,
-            state
-        );
-
-        if (participant == 0) {
-            if (!ecverify(fingerprint, signature, channels[channelId].addr0)) {
-                Error("signature invalid");
-                return;
-            }
-        } else if (participant == 1) {
-            if (!ecverify(fingerprint, signature, channels[channelId].addr1)) {
-                Error("signature invalid");
-                return;
-            }
-        } else {
-            Error("participant invalid");
-            return;
-        }
-        
-        channels[channelId].evidence1 = state;
-    }
-    
-    // function requestSettlement(
-    //     bytes32 channelId
+    // function addEvidence(
+    //     bytes32 channelId,
+    //     bytes state,
+    //     bytes signature,
+    //     uint8 participant
     // ) {
-    //     if (channels[channelId].phase == PHASE_OPEN) {
-    //         Error("channel open");
+    //     if (
+    //         channels[channelId].phase == PHASE_CHALLENGE &&
+    //         block.number > channels[channelId].closingBlock
+    //     ) {
+    //         channels[channelId].phase = PHASE_CLOSED;
+    //     }
+        
+    //     if (channels[channelId].phase == PHASE_CLOSED) {
+    //         Error("channel closed");
     //         return;
     //     }
+        
+    //     bytes32 fingerprint = sha3(
+    //         'evidenceTx',
+    //         channelId,
+    //         state
+    //     );
+
+    //     if (participant == 0) {
+    //         if (!ecverify(fingerprint, signature, channels[channelId].addr0)) {
+    //             Error("signature invalid");
+    //             return;
+    //         }
+            
+    //         channels[channelId].evidence0 = state;
+    //     } else if (participant == 1) {
+    //         if (!ecverify(fingerprint, signature, channels[channelId].addr1)) {
+    //             Error("signature invalid");
+    //             return;
+    //         }
+            
+    //         channels[channelId].evidence1 = state;
+    //     } else {
+    //         Error("participant invalid");
+    //         return;
+    //     }
+        
     // }
+    
+    function tryClose(
+        bytes32 channelId
+    ) {
+        if (
+            channels[channelId].phase == PHASE_CHALLENGE &&
+            block.number > channels[channelId].closingBlock
+        ) {
+            channels[channelId].phase = PHASE_CLOSED;
+        }
+    }
 }
