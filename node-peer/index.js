@@ -161,8 +161,6 @@ let commands = {
     const signature1 = await web3.promise.eth.sign(myAddress, fingerprint)
 
     await post(counterpartyUrl + '/accept_update', {
-      address0: myAddress,
-      address1: counterpartyAddress,
       channelId,
       sequenceNumber,
       state,

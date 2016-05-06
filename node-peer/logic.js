@@ -15,8 +15,8 @@ const storage = new JSONStorage('./storage');
 let commands = {
   // Propose a new channel and send to counterparty
   async proposeChannel({
-    myAddress,
-    counterpartyAddress,
+    myAddress: address0,
+    counterpartyAddress: address1,
     counterpartyUrl,
     channelId,
     state,
@@ -25,18 +25,29 @@ let commands = {
     const fingerprint = solSha3(
       'newChannel',
       channelId,
-      myAddress,
-      counterpartyAddress,
+      address0,
+      address1,
       state,
       challengePeriod
     )
 
-    const signature0 = await web3.promise.eth.sign(myAddress, fingerprint)
-
-    await post(counterpartyUrl + '/proposed_channel', {
+    storage.setItem('channels' + channelId, {
       channelId,
-      address0: myAddress,
-      address1: counterpartyAddress,
+      address0,
+      address1,
+      state,
+      challengePeriod,
+      theirProposedUpdates: [],
+      myProposedUpdates: [],
+      acceptedUpdates: []
+    })
+    
+    const signature0 = await web3.promise.eth.sign(address0, fingerprint)
+
+    await post(counterpartyUrl + '/add_proposed_channel', {
+      channelId,
+      address0,
+      address1,
       state,
       challengePeriod,
       signature0
@@ -47,7 +58,7 @@ let commands = {
 
   // Called by the counterparty over the http api, gets added to the
   // proposed channel box
-  async proposedChannel(proposal) {
+  async addProposedChannel(proposal) {
     const fingerprint = solSha3(
       'newChannel',
       proposal.channelId,
@@ -111,149 +122,144 @@ let commands = {
 
   // Propose an update to a channel, sign, and send to counterparty
   async proposeUpdate({
-    myAddress,
-    counterpartyAddress,
-    counterpartyUrl,
-    channelId,
-    state,
-    sequenceNumber
-  }) {
-    const fingerprint = solSha3(
-      'updateState',
-      channelId,
-      sequenceNumber,
-      state
-    )
-
-    const signature0 = await web3.promise.eth.sign(myAddress, fingerprint)
-
-    await post(counterpartyUrl + '/proposed_update', {
-      address0: myAddress,
-      address1: counterpartyAddress,
-      channelId,
-      sequenceNumber,
-      state,
-      signature0
-    })
-  },
-  
-  
-
-  // Called by the counterparty over the http api, gets added to the
-  // proposed update box
-  async proposedUpdate(proposal) {
-    const fingerprint = solSha3(
-      'newChannel',
-      proposal.channelId,
-      proposal.address0,
-      proposal.address1,
-      proposal.state,
-      proposal.challengePeriod
-    )
-
-    const valid = await ec.ecverify.call(fingerprint, proposal.signature0, proposal.address0)
-
-    if (!valid) {
-      throw new Error('signature0 invalid')
-    }
-    
-    let proposedUpdates = storage.getItem('proposedUpdates')
-    proposedUpdates.push(proposal)
-    storage.setItem('proposedUpdates', proposedUpdates)
-  },
-
-
-
-  // Sign the update and send it back to the counterparty
-  async acceptUpdate({
-    address0,
-    address1,
-    counterpartyUrl,
     channelId,
     sequenceNumber,
-    state,
-    signature0
+    state
   }) {
+    let channel = storage.getItem('channels' + channelId)
+
     const fingerprint = solSha3(
       'updateState',
       channelId,
       sequenceNumber,
       state
     )
+    
+    const signature = await web3.promise.eth.sign(
+      channel['address' + channel.me],
+      fingerprint
+    )
 
-    const valid = await ec.ecverify.call(fingerprint, signature0, counterpartyAddress)
-
-    if (!valid) {
-      throw new Error('signature0 invalid')
-    }
-
-    const signature1 = await web3.promise.eth.sign(myAddress, fingerprint)
-
-    await post(counterpartyUrl + '/accepted_update', {
-      address0,
-      address1,
+    const update = {
       channelId,
       sequenceNumber,
       state,
-      signature0,
-      signature1
-    })
+      ['signature' + channel.me]: signature
+    }
+
+    channel.myProposedUpdates.push(update)
+    storage.setItem('channels' + channelId, channel)
+    
+    await post(channel.counterpartyUrl + '/add_proposed_update', update)
+  },
+  
+  
+
+  // Called by the counterparty over the http api, gets verified and
+  // added to the proposed update box
+  async addProposedUpdate(update) {
+    const channel = storage.getItem('channels' + update.channelId)
+    
+    verifyUpdate(channel, update)
+    
+    channel.theirProposedUpdates.push(update)
+    storage.setItem('channels' + update.channelId, channel)
+  },
+
+  
+
+  // Sign the update and send it back to the counterparty
+  async acceptUpdate(update) {
+    const channel = storage.getItem('channels' + update.channelId)
+    
+    const fingerprint = verifyUpdate(channel, update)
+
+    const signature = await web3.promise.eth.sign(
+      channel['address' + channel.me],
+      fingerprint
+    )
+
+    update['signature' + channel.me] = signature
+    
+    channel.acceptedUpdates.push(update)
+    storage.setItem('channels' + update.channelId, channel)
+    
+    await post(channel.counterpartyUrl + '/add_accepted_update', update)
+  },
+
+
+
+  // Called by the counterparty over the http api, gets verified and
+  // added to the accepted update box
+  async addAcceptedUpdate(update) {
+    const channel = storage.getItem('channels' + update.channelId)
+    
+    verifyUpdate(channel, update)
+    
+    channel.acceptedUpdates.push(update)
+    storage.setItem('channels' + update.channelId, channel)
   },
 
 
 
   // Post an update to the blockchain
-  async postUpdate({
-    address0,
-    address1,
-    channelId,
-    sequenceNumber,
-    state,
-    signature0
-  }) {
-    const fingerprint = solSha3(
-      'updateState',
-      channelId,
-      sequenceNumber,
-      state
-    )
-
-    const valid = await ec.ecverify.call(fingerprint, signature0, address0)
-
-    if (!valid) {
-      throw new Error('signature0 invalid')
-    }
-
-    const signature1 = await web3.promise.eth.sign(address1, fingerprint)
-
+  async postUpdate(update) {
     await channels.updateState(
-      channelId,
-      web3.toHex(sequenceNumber),
-      state,
-      signature0,
-      signature1
+      update.channelId,
+      update.sequenceNumber,
+      update.state,
+      update.signature0,
+      update.signature1
     )
   },
 
   // Start the challenge period, putting channel closing into motion
-  async startChallengePeriod({
-    channelId,
-    myAddress
-  }) {
+  async startChallengePeriod(
+    channelId
+  ) {
+    const channel = storage.getItem('channels' + channelId)
     const fingerprint = solSha3(
       'startChallengePeriod',
       channelId
     )
     
-    const signature = await web3.promise.eth.sign(myAddress, fingerprint)
+    const signature = await web3.promise.eth.sign(
+      channel['address' + channel.me],
+      fingerprint
+    )
     
     await channels.startChallengePeriod(
-      '0x' + channelId,
-      myAddress,
+      channelId,
       signature
     )
   }
 }
+
+async function verifyUpdate(channel, proposal) {
+  const fingerprint = solSha3(
+    'updateState',
+    proposal.channelId,
+    proposal.sequenceNumber,
+    proposal.state
+  )
+
+  const theirAddress = channel['address' + swap[channel.me]]
+  const theirSignature = proposal['signature' + swap[channel.me]]
+
+  const valid = await ec.ecverify.call(
+    fingerprint,
+    theirSignature,
+    theirAddress
+  )
+
+  if (!valid) {
+    throw new Error('their signature invalid')
+  }
+  
+  return fingerprint
+}
+
+const swap = [1, 0]
 
 function get(url, callback) {
   request.get({
